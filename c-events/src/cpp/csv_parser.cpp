@@ -10,6 +10,8 @@
 #include "dictionary_writer.h"
 #include "util.h"
 
+#define CSV_DIRECTORY "data/csv/"
+
 typedef int (*process_file_f)(const char *, struct dictionary_writer *);
 
 char * process_line(char *line, struct dictionary_writer *dict)
@@ -61,8 +63,8 @@ void do_for_each_file(struct dictionary_writer *dict, process_file_f callback)
 	WIN32_FIND_DATA find_data;
 	HANDLE h;
 	char *filename;
-	const char *directory_name = "csv/";
-	const char *search_key = "csv/google*";
+	const char *directory_name = CSV_DIRECTORY;
+	const char *search_key = CSV_DIRECTORY "google*";
 
 	h = FindFirstFile(search_key, &find_data);
 	if (h != INVALID_HANDLE_VALUE) {
@@ -91,7 +93,7 @@ int do_for_each_file(struct dictionary_writer *dict, process_file_f callback)
 	struct dirent *dp;
 	char *filename;
 	int err = 0;
-	const char *directory_name = "csv/";
+	const char *directory_name = CSV_DIRECTORY;
 	const char *search_key = "google";
 	const size_t key_length = strlen(search_key);
 

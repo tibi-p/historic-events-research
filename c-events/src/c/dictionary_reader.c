@@ -22,7 +22,7 @@ int init_dictreader(struct dictionary_reader *dict, const char *base_filename)
 	}
 
 	memset(dict->frequencies, 0, sizeof(dict->frequencies));
-	err = load_frequencies(dict->frequencies, "googlebooks-eng-all-totalcounts-20120701.txt");
+	err = load_frequencies(dict->frequencies, "data/googlebooks-eng-all-totalcounts-20120701.txt");
 	if (err != 0) {
 		goto out_files;
 	}

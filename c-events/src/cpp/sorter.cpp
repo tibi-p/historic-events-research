@@ -21,13 +21,13 @@ int sort_binary_data()
 	uint32_t wr_woffset = 0;
 	int err = 0;
 
-	err = init_dictreader(&dictreader, "unsorted_data/googlebooks-eng-all-1gram-20120701-database");
+	err = init_dictreader(&dictreader, "data/raw/googlebooks-eng-all-1gram-20120701-database");
 	if (err != 0) {
 		fprintf(stderr, "Could not init the dictionary reader.\n");
 		goto out;
 	}
 
-	err = init_dictfiles(&out_files, "tmp/googlebooks-eng-all-1gram-20120701-database", "wb");
+	err = init_dictfiles(&out_files, "data/temp/googlebooks-eng-all-1gram-20120701-database", "wb");
 	if (err != 0) {
 		fprintf(stderr, "Could not init the output files.\n");
 		goto out_reader;
