@@ -33,7 +33,10 @@ def to_range_list(values):
 	return ranges
 
 def range_to_str(value):
-	return '%s-%s' % value
+	if value[0] != value[1]:
+		return '%s-%s' % value
+	else:
+		return str(value[0])
 
 def process_topics(directory):
 	distributions_filename = os.path.join(directory, 'document-topic-distributions.csv')
@@ -73,7 +76,7 @@ def process_topics(directory):
 		mean_years.append((mean_year, topic))
 	mean_years.sort()
 
-	for (_, topic) in mean_years:
+	for _, topic in mean_years:
 		years = topic_years[topic]
 		if len(years) > 5:
 			ranges = to_range_list(years)

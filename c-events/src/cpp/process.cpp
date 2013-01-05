@@ -10,7 +10,7 @@
 #define MAX_ENTRIES (1 << 20)
 
 struct db_entry database[MAX_ENTRIES];
-struct indexed_word words[MAX_ENTRIES];
+char *words[MAX_ENTRIES];
 
 double average_match_count(struct series_entry *series, size_t start, size_t end)
 {
@@ -20,12 +20,40 @@ double average_match_count(struct series_entry *series, size_t start, size_t end
 	return acc / (end - start);
 }
 
+void process_series(const char *word, const struct series_entry *series,
+	FILE *zeitgeist)
+{
+	for (int j = 251; j < 2008 - 1500; j++) {
+		double a = series[j - 1].match_count;
+		double b = series[j].match_count;
+		double c = series[j + 1].match_count;
+		if (a >= 0 && b >= 1e-4 && c >= 0) {
+			int count = 0;
+			while (count <= 8) {
+				double sup_ratio = 1.0 + 0.1 * (count + 1);
+				double dsup_ratio = 1.0 + 0.2 * (count + 1);
+				double inf_ratio = 1.0 - 0.1 * (count + 1);
+				double dinf_ratio = 1 / dsup_ratio;
+				if ((b > sup_ratio * a && c > sup_ratio * b) || b > dsup_ratio * a ||
+						(b < inf_ratio * a && c < inf_ratio * b) || b < dinf_ratio * a) {
+					++count;
+				} else {
+					break;
+				}
+			}
+			if (count > 0)
+				fprintf(zeitgeist, "%s\t%d\t%d\n", word, 1500 + j, count);
+		}
+	}
+}
+
 int main()
 {
 	clock_t cs, ce;
 	const char *summary_filename = "data/zeitgeist/summary.txt";
 	FILE *zeitgeist;
 	struct dictionary_reader dict;
+	size_t num_read;
 
 	cs = clock();
 
@@ -42,7 +70,10 @@ int main()
 		exit(EXIT_FAILURE);
 	}
 
-	fread(database, sizeof(*database), dict.num_words, dict.files.main_file);
+	num_read = fread(database, sizeof(*database), dict.num_words, dict.files.main_file);
+	if (num_read != dict.num_words)
+		exit(EXIT_FAILURE);
+
 	for (size_t i = 0; i < dict.num_words; i++) {
 		uint32_t word_offset = database[i].word_offset;
 		uint32_t word_length = database[i].word_length;
@@ -55,8 +86,7 @@ int main()
 		char *word = (char *) malloc((word_length + 1) * sizeof(*word));
 		memcpy(word, p, word_length * sizeof(*word));
 		word[word_length] = 0;
-		words[i].index = i;
-		words[i].word = word;
+		words[i] = word;
 	}
 
 	for (size_t i = 0; i < dict.num_words; i++) {
@@ -69,7 +99,7 @@ int main()
 		uint32_t length = current_entry->time_length;
 		if (fseek64(dict.files.time_file, offset, SEEK_SET) != 0)
 			exit(EXIT_FAILURE);
-		size_t num_read = fread(table, sizeof(*table), length, dict.files.time_file);
+		num_read = fread(table, sizeof(*table), length, dict.files.time_file);
 		if (num_read != length)
 			exit(EXIT_FAILURE);
 
@@ -87,9 +117,6 @@ int main()
 			series[pos].volume_count = entry->volume_count;
 		}
 
-		double a = average_match_count(series, 430, 440);
-		double b = average_match_count(series, 440, 445);
-		double c = average_match_count(series, 445, 455);
 #if 0
 		if (a < b && b > c && b >= 1.e-4) {
 			if (1.5 * a < b || b > 1.5 * c)
@@ -114,47 +141,29 @@ int main()
 			smooth_series[j - smoothing_window].volume_count = series[j].volume_count;
 			smooth_series[j - smoothing_window].match_count = (double) smoothing_sum / window_size;
 		}
-		if (strcmp(words[i].word, "war") == 0) {
+		if (strcmp(words[i], "war") == 0) {
 			printf("c(");
+			/*
 			for (size_t j = 430; j < 455; j++) {
 				//printf("%lf, ", smooth_series[j].match_count);
 				printf("%lf, ", series[j].match_count);
 				if (j % 5 == 4)
 					printf("| ");
 			}
-			printf(")\n");
-			printf("> %lf %lf %lf\n", a, b, c);
-		}
-		//for (int j = 1; j < MAX_YEARS - 1; j++) {
-		for (int j = 251; j < 2008 - 1500; j++) {
-			//a = series[j - 1].match_count;
-			//b = series[j].match_count;
-			//c = series[j + 1].match_count;
-			a = smooth_series[j - 1].match_count;
-			b = smooth_series[j].match_count;
-			c = smooth_series[j + 1].match_count;
-			if (a >= 0 && b >= 1e-4 && c >= 0) {
-				int count = 0;
-				while (count <= 8) {
-					double sup_ratio = 1.0 + 0.1 * (count + 1);
-					double dsup_ratio = 1.0 + 0.2 * (count + 1);
-					double inf_ratio = 1.0 - 0.1 * (count + 1);
-					double dinf_ratio = 1 / dsup_ratio;
-					if ((b > sup_ratio * a && c > sup_ratio * b) || b > dsup_ratio * a ||
-							(b < inf_ratio * a && c < inf_ratio * b) || b < dinf_ratio * a) {
-						++count;
-					} else {
-						break;
-					}
-				}
-				if (count > 0)
-					fprintf(zeitgeist, "%s\t%d\t%d\n", words[i].word, 1500 + j, count);
+			*/
+			for (size_t j = 250; j < MAX_YEARS; j++) {
+				//printf("%lf, ", smooth_series[j].match_count);
+				printf("%lf, ", series[j].match_count);
+				if (j % 5 == 4)
+					printf("\n");
 			}
+			printf(")\n");
 		}
+		process_series(words[i], smooth_series, zeitgeist);
 	}
 
 	for (size_t i = 0; i < dict.num_words; i++)
-		free(words[i].word);
+		free(words[i]);
 
 	destroy_dictreader(&dict);
 	fclose(zeitgeist);
