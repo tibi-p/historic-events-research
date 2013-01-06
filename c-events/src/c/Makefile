@@ -1,7 +1,8 @@
 CC=gcc
-CFLAGS=-Wall -Wextra -Wsign-conversion -I../../include -D_LARGEFILE64_SOURCE -O2 # -g -O0
+CFLAGS=-Wall -Wextra -Wsign-conversion -I../../include -D_LARGEFILE64_SOURCE -O2 # -g
 CACHE_OBJS=precache.o
-UTIL_OBJS=dictionary_files.o dictionary_reader.o dictionary_writer.o util.o
+UTIL_OBJS=dictionary_files.o dictionary_reader.o dictionary_writer.o \
+	linear_model.o static_array.o util.o
 OUT_DIR=../../bin
 OUT_CACHE_OBJS=$(addprefix $(OUT_DIR)/,$(CACHE_OBJS))
 OUT_UTIL_OBJS=$(addprefix $(OUT_DIR)/,$(UTIL_OBJS))
