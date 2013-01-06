@@ -4,7 +4,7 @@
 #include "dictionary_files.h"
 #include "dictionary_types.h"
 
-#define MAX_YEARS 520
+#define MAX_YEARS 509
 
 #ifdef __cplusplus
 extern "C" {
