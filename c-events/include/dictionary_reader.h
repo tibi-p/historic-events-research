@@ -12,7 +12,8 @@ extern "C" {
 
 struct dictionary_reader {
 	struct dictionary_files files;
-	char *all_words;
+	struct db_entry *database;
+	char **words;
 	size_t num_words;
 	long long time_file_size;
 	long word_file_size;
@@ -25,7 +26,12 @@ struct indexed_word {
 };
 
 int init_dictreader(struct dictionary_reader *dict, const char *base_filename);
+
 void destroy_dictreader(struct dictionary_reader *dict);
+
+int read_table(const struct dictionary_reader *dict, size_t index,
+	struct time_entry *table, size_t *table_size);
+
 int is_in_word_bounds(const struct dictionary_reader *dict,
 	uint32_t word_offset, uint32_t word_length);
 

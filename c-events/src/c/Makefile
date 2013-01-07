@@ -1,5 +1,6 @@
 CC=gcc
-CFLAGS=-Wall -Wextra -Wsign-conversion -I../../include -D_LARGEFILE64_SOURCE -O2 # -g
+CFLAGS=-Wall -Wextra -Wsign-conversion -I../../include -D_LARGEFILE64_SOURCE -O2
+#CFLAGS+=-g
 CACHE_OBJS=precache.o
 UTIL_OBJS=dictionary_files.o dictionary_reader.o dictionary_writer.o \
 	linear_model.o static_array.o util.o

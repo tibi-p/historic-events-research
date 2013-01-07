@@ -95,9 +95,9 @@ void normalize_generate_ranges(struct static_array *ranges,
 	const gsl_multimin_fdfminimizer_type *T,
 	gsl_multimin_function_fdf *fdf)
 {
-	struct static_range *training_data;
+	const struct static_range *training_data;
 
-	training_data = (struct static_range *) fdf->params;
+	training_data = fdf->params;
 	normalize_standard_score(training_data->array, training_data->size);
 	generate_ranges(ranges, T, fdf);
 }

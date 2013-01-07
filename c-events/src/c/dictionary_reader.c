@@ -8,11 +8,15 @@
 
 static int load_frequencies(struct total_counts_entry *frequencies,
 	const char *filename);
+static int load_database(struct dictionary_reader *self);
+static int load_words(struct dictionary_reader *self, size_t word_file_size);
+static void free_words(char **words, size_t num_words);
+
+static char * build_all_words(struct dictionary_reader *dict, size_t word_file_size);
 
 int init_dictreader(struct dictionary_reader *dict, const char *base_filename)
 {
 	size_t word_file_size;
-	size_t num_read;
 	long main_file_size;
 	int err = 0;
 
@@ -48,23 +52,19 @@ int init_dictreader(struct dictionary_reader *dict, const char *base_filename)
 
 	dict->num_words = (size_t) main_file_size / sizeof(struct db_entry);
 
-	dict->all_words = malloc(word_file_size);
-	if (dict->all_words == NULL) {
-		err = 1;
+	err = load_database(dict);
+	if (err != 0)
 		goto out_files;
-	}
 
-	num_read = fread(dict->all_words, 1, word_file_size, dict->files.word_file);
-	if (num_read != word_file_size) {
-		err = 1;
-		goto out_words;
-	}
+	err = load_words(dict, word_file_size);
+	if (err != 0)
+		goto out_database;
 
 out:
 	return err;
 
-out_words:
-	free(dict->all_words);
+out_database:
+	free(dict->database);
 out_files:
 	destroy_dictfiles(&dict->files);
 	goto out;
@@ -72,8 +72,49 @@ out_files:
 
 void destroy_dictreader(struct dictionary_reader *dict)
 {
-	free(dict->all_words);
+	free_words(dict->words, dict->num_words);
+	free(dict->database);
 	destroy_dictfiles(&dict->files);
+}
+
+int read_table(const struct dictionary_reader *dict, size_t index,
+	struct time_entry *table, size_t *table_size)
+{
+	const struct db_entry *entry;
+	size_t num_read;
+	uint32_t offset, length;
+	int err = 0;
+
+	entry = &dict->database[index];
+	offset = entry->time_offset;
+	length = entry->time_length;
+
+	if (length == 0) {
+		fprintf(stderr, "Invalid word length: %lu\n",
+			(unsigned long) length);
+		err = 2;
+		goto out;
+	}
+
+	err = fseek64(dict->files.time_file, offset, SEEK_SET);
+	if (err != 0) {
+		fprintf(stderr, "Could not seek in the time file to offset: %lu\n",
+			(unsigned long) offset);
+		err = 1;
+		goto out;
+	}
+
+	num_read = fread(table, sizeof(*table), length, dict->files.time_file);
+	if (num_read != length) {
+		fprintf(stderr, "Tried reading %lu entries from the time file, managed only %lu.",
+			(unsigned long) length, (unsigned long) num_read);
+		err = 1;
+		goto out;
+	}
+
+	*table_size = num_read;
+out:
+	return err;
 }
 
 int is_in_word_bounds(const struct dictionary_reader *dict,
@@ -136,4 +177,124 @@ out_file:
 	fclose(f);
 out:
 	return err;
+}
+
+static int load_database(struct dictionary_reader *self)
+{
+	struct db_entry *database;
+	size_t num_read;
+	int err = 0;
+
+	database = malloc(self->num_words * sizeof(*database));
+	if (database == NULL) {
+		fprintf(stderr, "Could not allocate memory for database\n");
+		err = 1;
+		goto out;
+	}
+
+	num_read = fread(database, sizeof(*database), self->num_words, self->files.main_file);
+	if (num_read != self->num_words) {
+		fprintf(stderr, "Tried reading %lu entries from the main file, managed only %lu.",
+			(unsigned long) self->num_words, (unsigned long) num_read);
+		err = 1;
+		goto out_database;
+	}
+
+	self->database = database;
+
+out:
+	return err;
+
+out_database:
+	free(database);
+	goto out;
+}
+
+static int load_words(struct dictionary_reader *self, size_t word_file_size)
+{
+	char **words;
+	const char *p;
+	char *all_words, *word;
+	size_t i;
+	int err = 0;
+
+	all_words = build_all_words(self, word_file_size);
+	if (all_words == NULL) {
+		err = 1;
+		goto out;
+	}
+
+	words = malloc(self->num_words * sizeof(*words));
+	if (words == NULL) {
+		err = 1;
+		goto out_all_words;
+	}
+
+	for (i = 0; i < self->num_words; i++) {
+		uint32_t word_offset = self->database[i].word_offset;
+		uint32_t word_length = self->database[i].word_length;
+		if (word_length == 0) {
+			fprintf(stderr, "Invalid word length: %lu\n",
+				(unsigned long) word_length);
+			err = 2;
+			goto out_words;
+		}
+		if (!is_in_word_bounds(self, word_offset, word_length)) {
+			fprintf(stderr, "Invalid position in the words file (%u +%u).\n",
+				word_offset, word_length);
+			err = 1;
+			goto out_words;
+		}
+		p = &all_words[word_offset];
+		word = malloc((word_length + 1) * sizeof(*word));
+		memcpy(word, p, word_length * sizeof(*word));
+		word[word_length] = 0;
+		words[i] = word;
+	}
+
+	self->words = words;
+out_all_words:
+	free(all_words);
+out:
+	return err;
+
+out_words:
+	free_words(words, i);
+	goto out_all_words;
+}
+
+static void free_words(char **words, size_t num_words)
+{
+	size_t i;
+
+	for (i = 0; i < num_words; i++)
+		free(words[i]);
+	memset(words, 0, num_words * sizeof(*words));
+	free(words);
+}
+
+static char * build_all_words(struct dictionary_reader *dict, size_t word_file_size)
+{
+	char *all_words;
+	size_t num_read;
+
+	all_words = malloc(word_file_size);
+	if (all_words == NULL) {
+		fprintf(stderr, "Could not allocate memory for all words\n");
+		goto out;
+	}
+
+	num_read = fread(all_words, 1, word_file_size, dict->files.word_file);
+	if (num_read != word_file_size) {
+		fprintf(stderr, "Tried reading %lu entries from the word file, managed only %lu.",
+			(unsigned long) word_file_size, (unsigned long) num_read);
+		goto out_words;
+	}
+
+out:
+	return all_words;
+
+out_words:
+	free(all_words);
+	return NULL;
 }
