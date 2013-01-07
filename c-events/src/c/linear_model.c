@@ -91,6 +91,17 @@ void normalize_standard_score(double *data, size_t num_elems)
 		data[i] = (data[i] - mean) / sigma;
 }
 
+void normalize_generate_ranges(struct static_array *ranges,
+	const gsl_multimin_fdfminimizer_type *T,
+	gsl_multimin_function_fdf *fdf)
+{
+	struct static_range *training_data;
+
+	training_data = (struct static_range *) fdf->params;
+	normalize_standard_score(training_data->array, training_data->size);
+	generate_ranges(ranges, T, fdf);
+}
+
 static double range_get(const struct static_range *self, size_t index)
 {
 	double value;

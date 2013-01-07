@@ -23,6 +23,10 @@ void generate_ranges(struct static_array *ranges,
 
 void normalize_standard_score(double *data, size_t num_elems);
 
+void normalize_generate_ranges(struct static_array *ranges,
+	const gsl_multimin_fdfminimizer_type *T,
+	gsl_multimin_function_fdf *fdf);
+
 double regression_f(const gsl_vector *v, void *params);
 
 void regression_df(const gsl_vector *v, void *params, gsl_vector *df);
