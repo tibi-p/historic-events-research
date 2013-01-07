@@ -1,25 +1,21 @@
 CC=g++
 CXX=g++
-CXXFLAGS=-Wall -Wextra -Wsign-conversion -I../../include -D_LARGEFILE64_SOURCE -O2 # -g
+CXXFLAGS=-Wall -Wextra -Wsign-conversion -I../../include -D_LARGEFILE64_SOURCE -O2
+#CXXFLAGS+=-g
 LDFLAGS=-lgsl -lgslcblas
 CSV_PARSER_OBJS=csv_parser.o dictionary_files.o dictionary_writer.o util.o
-SORTER_OBJS=sorter.o dictionary_files.o dictionary_reader.o util.o
 PROCESS_OBJS=process.o dictionary_files.o dictionary_reader.o util.o \
 	linear_model.o static_array.o
 OUT_DIR=../../bin
 OUT_CSV_PARSER_OBJS=$(addprefix $(OUT_DIR)/,$(CSV_PARSER_OBJS))
-OUT_SORTER_OBJS=$(addprefix $(OUT_DIR)/,$(SORTER_OBJS))
 OUT_PROCESS_OBJS=$(addprefix $(OUT_DIR)/,$(PROCESS_OBJS))
 .PHONY : clean
 
 all: build
 
-build: $(OUT_DIR)/csv_parser $(OUT_DIR)/sorter $(OUT_DIR)/process
+build: $(OUT_DIR)/csv_parser $(OUT_DIR)/process
 
 $(OUT_DIR)/csv_parser: $(OUT_CSV_PARSER_OBJS)
-	$(CC) $^ $(LDFLAGS) -o $@
-
-$(OUT_DIR)/sorter: $(OUT_SORTER_OBJS)
 	$(CC) $^ $(LDFLAGS) -o $@
 
 $(OUT_DIR)/process: $(OUT_PROCESS_OBJS)
@@ -32,4 +28,4 @@ run: csv_parser
 	@./csv_parser
 
 clean:
-	rm -rf $(OUT_DIR)/*.o *~ $(OUT_DIR)/csv_parser $(OUT_DIR)/sorter $(OUT_DIR)/process
+	rm -rf $(OUT_DIR)/*.o *~ $(OUT_DIR)/csv_parser $(OUT_DIR)/process
