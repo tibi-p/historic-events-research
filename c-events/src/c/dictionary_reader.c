@@ -117,6 +117,29 @@ out:
 	return err;
 }
 
+void table_to_series(const struct dictionary_reader *dictreader,
+	const struct time_entry *table, size_t table_size,
+	double *series)
+{
+	const struct time_entry *entry;
+	uint64_t year_match_count;
+	size_t j;
+	int pos;
+
+	memset(series, 0, MAX_YEARS * sizeof(*series));
+	for (j = 0; j < table_size; j++) {
+		entry = &table[j];
+		if (entry->year < MIN_YEAR || entry->year >= MIN_YEAR + MAX_YEARS) {
+			fprintf(stderr, "The %luth entry has an invalid year: %lu\n",
+				(unsigned long) j, (unsigned long) entry->year);
+			exit(EXIT_FAILURE);
+		}
+		pos = entry->year - MIN_YEAR;
+		year_match_count = dictreader->frequencies[pos].match_count;
+		series[pos] = (double) (100 * entry->match_count) / year_match_count;
+	}
+}
+
 int is_in_word_bounds(const struct dictionary_reader *dict,
 	uint32_t word_offset, uint32_t word_length)
 {

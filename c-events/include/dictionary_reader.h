@@ -32,6 +32,10 @@ void destroy_dictreader(struct dictionary_reader *dict);
 int read_table(const struct dictionary_reader *dict, size_t index,
 	struct time_entry *table, size_t *table_size);
 
+void table_to_series(const struct dictionary_reader *dictreader,
+	const struct time_entry *table, size_t table_size,
+	double *series);
+
 int is_in_word_bounds(const struct dictionary_reader *dict,
 	uint32_t word_offset, uint32_t word_length);
 
