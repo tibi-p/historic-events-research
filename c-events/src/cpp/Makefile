@@ -5,9 +5,9 @@ CXXFLAGS=-Wall -Wextra -Wsign-conversion -I../../include -D_LARGEFILE64_SOURCE -
 LDFLAGS=-lgsl -lgslcblas
 CSV_PARSER_OBJS=csv_parser.o dictionary_files.o dictionary_writer.o util.o
 PROCESS_OBJS=process.o dictionary_files.o dictionary_reader.o util.o \
-	linear_model.o static_array.o
+	gaussian_model.o linear_model.o static_array.o
 RELEVANCE_OBJS=relevance.o dictionary_files.o dictionary_reader.o util.o \
-	linear_model.o static_array.o
+	gaussian_model.o linear_model.o static_array.o
 OUT_DIR=../../bin
 OUT_CSV_PARSER_OBJS=$(addprefix $(OUT_DIR)/,$(CSV_PARSER_OBJS))
 OUT_PROCESS_OBJS=$(addprefix $(OUT_DIR)/,$(PROCESS_OBJS))
