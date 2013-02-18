@@ -1,0 +1,30 @@
+% vim: set tw=78 sts=2 sw=2 ts=8 aw et ai:
+
+\subsection{Corpus, Smoothing and Historical Relevance}
+
+The full Google Books Ngram Corpus has been made freely available by Google. In this paper, only statistics for 1-grams are used. More specifically, the analysis shall be based on the time series it provides for each word, mapping the year of publishing to the frequency of the n-gram in books written in that year. In order to deny the negative effect that the natural increase in books published each year may have on the relevance of the time series, the model's input shall instead be the time series of normalized frequencies. The time spanned by the series is between $1500$ and $2008$.
+
+Although much effort has been put into ensuring the quality of the Google Books Ngram Corpus, it still contains noise from sources such as erroneous date of publication. In order to mitigate this effect, the simple solution is to smooth the series. More formally, say that the time series for a given word $w_i$ is denoted by $\left\{ s_{i, t} \right\}_{t = 1500}^{2008}$. Then, the smoothed series with window $k$ is given by
+
+\begin{align}
+\label{eq:smooth-series}
+u_{k} \left( i, t \right) = \frac{\sum_{d = -k}^{k} s_{i, t + d}}{2k + 1}, \, \forall t \in \overline{1500 + d, 2008 - d}.
+\end{align}
+
+From now on, all references to $\left\{ s_{i, t} \right\}$ shall instead refer to the associated smoothed series $u_k$ defined in equation \eqref{eq:smooth-series} above, for a value of $k$ that will be later empirically determined.
+
+The data provided by the Google Books Ngram Corpus is immense (only the 1-grams have a size of about 30 GB), so trying to identify historic events using all of the raw data seems to be an intractable problem. In order to solve this issue, I have opted to perform a preliminary transformation on the data, with the purpose of reducing the size to a more manageable order of magnitude. Of course, the transformation should retain the property of historical relevance of an n-gram in a given year, so the subsequent analysis can correctly model the influence of historic events on texts. Regarding the structure of the time series, it should transform a time series of normalized frequencies (real numbers between $0$ and $1$) to a time series reflecting historical relevance on a discrete scale, for example the integers in $\left[ 0, 10 \right]$, where $0$ would reflect lack of historical relevance of the n-gram in that year and $10$ would reflect an n-gram that basically defines that year. Due to the implicit localized nature of historic events, any given n-gram should attain historical relevance only within a small time frame. Thus, most of the entries in the reduced time series should be zero, leading to a highly sparse representation. Therefore, not only is this transformation useful from a practical point of view (it drastically reduces the computational resources required for the analysis), but it also has theoretical arguments that it maps well to the task of historic events identification.
+
+The exact scale used for the reduced time series is not fixed beforehand and it is worth discussing its influence. Thus, representing historical relevance on a binary scale leads to an extremely sparse model that can be analyzed very fast, but that will lead to mediocre results. Increasing the number of degrees of relevance will lead to better and better representations and consequently to results of higher quality. There is an unavoidable trade-off to be made here, namely the one between the time necessary to run model and its quality, so the scale will be practically limited by the amount of computational resources available for the subsequent analysis of the reduced time series.
+
+\subsection{Historical Relevance Algorithms}
+\label{sec:historical-relevance-algorithms}
+\input{src/model/historical-relevance-algorithms}
+
+\subsection{Historically Relevant Documents and Topic Models}
+
+Now that several ways of assigning historical relevance to an n-gram have been developed, the problem of identifying historical events can finally be tackled. For each year $t \in \left[ 1500, 2008 \right]$, we build its historically relevant document $d_t$ as follows: we include each $w_i$ (that satisfies $r_{i, t} > 0$) exactly $r_{i, t}$ times.
+
+However, the sheer size of the documents make it intractable to analyze them by hand. Topic models seem most suitable for solving this problem, as they are designed for discovering the hidden thematic structure in document collections \cite{Blei:2012:PTM:2133806.2133826}. The specific algorithm used in this paper is the Latent Dirichlet Allocation (LDA) \cite{Blei:2003:LDA:944919.944937}. In this generative model, each topic is represented as a multinomial distribution over the words. To generate a document of given length, one first selects a topic mixture from a Dirichlet distribution over all topics. Then, for each word, one selects a topic from the previous topic mixture, which is used for sampling the word.
+
+Upon applying Latent Dirichlet Allocation to the historically relevant documents, ideally the topics found by the algorithm should be types of historic events and the topic distribution for any given year should represent the underlying historic events going on in that year. However, what ends up happening is that recurrent themes for consecutive years are grouped into a topic. While this still needs the intervention of a human to interpret the results, the data that must be analyzed is significantly smaller in size. Thus, for every period in time, we will get a set of keywords, some of which will point to historic events, while others may point to cultural trends.
