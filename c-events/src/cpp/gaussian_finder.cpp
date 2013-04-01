@@ -48,11 +48,11 @@ void select_gaussians(const double *series, size_t inf, size_t sup, vector<gauss
 }
 
 void relevant_gaussians(const vector<gaussian_entry> &gaussians,
-	vector< pair<size_t, int> > &counts, double widening)
+	vector< pair<size_t, int> > &relevant_counts, double widening)
 {
 	bitset<MAX_YEARS> used;
 
-	counts.clear();
+	relevant_counts.clear();
 	for (vector<gaussian_entry>::const_iterator it = gaussians.begin(); it != gaussians.end(); ++it) {
 		size_t left = it->left;
 		size_t right = it->right;
@@ -74,7 +74,7 @@ void relevant_gaussians(const vector<gaussian_entry> &gaussians,
 				used[i] = true;
 				int current_count = (int) (ratio * gsl_ran_gaussian_pdf(i - it->mean, widening * it->sigma));
 				if (current_count > 0)
-					counts.push_back(make_pair(MIN_YEAR + i, current_count));
+					relevant_counts.push_back(make_pair(MIN_YEAR + i, current_count));
 			}
 		}
 	}

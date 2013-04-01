@@ -114,31 +114,15 @@ void linear_model_series_to_csv(const char *word,
 void fit_gaussians(double *series, size_t inf, size_t sup, int *counts)
 {
 	vector<gaussian_entry> gaussians;
-	bitset<MAX_YEARS> used;
+	vector< pair<size_t, int> > relevant_counts;
 
 	select_gaussians(series, inf, sup, gaussians);
-
-	for (vector<gaussian_entry>::iterator it = gaussians.begin(); it != gaussians.end(); ++it) {
-		size_t left = it->left;
-		size_t right = it->right;
-		bool valid = true;
-		for (size_t i = left; i <= right; i++)
-			if (used[i]) {
-				valid = false;
-				break;
-			}
-		if (valid) {
-			double max_probability = gsl_ran_gaussian_pdf(0, it->sigma);
-			double increase = it->increase;
-			if (increase > 1.)
-				increase = 1.;
-			int count = (int) (10 * increase);
-			//printf("count=%d\n", count);
-			double ratio = (count + .5) / max_probability;
-			for (size_t i = left; i <= right; i++) {
-				used[i] = true;
-				counts[i] = (int) (ratio * gsl_ran_gaussian_pdf(i - it->mean, 2 * it->sigma));
-			}
+	relevant_gaussians(gaussians, relevant_counts, 2.0);
+	for (vector< pair<size_t, int> >::iterator it = relevant_counts.begin(); it != relevant_counts.end(); ++it) {
+		size_t year = it->first;
+		if (year >= 1750) {
+			int count = it->second;
+			counts[year - MIN_YEAR] = count;
 		}
 	}
 }

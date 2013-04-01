@@ -27,23 +27,21 @@ double average_match_count(struct series_entry *series, size_t start, size_t end
 }
 
 void process_series_double_change(const char *word,
-	const struct series_entry *series, FILE *zeitgeist)
+	double *series, FILE *zeitgeist)
 {
-	double x, y, z;
-
 	for (int j = 2; j < MAX_YEARS - 2; j++) {
-		x = series[j - 1].match_count;
-		y = series[j].match_count;
-		z = series[j + 1].match_count;
-		if (x >= 0 && y >= 1e-4 && z >= 0) {
+		double a = series[j - 1];
+		double b = series[j];
+		double c = series[j + 1];
+		if (a >= 0 && b >= 1e-4 && c >= 0) {
 			int count = 0;
 			while (count <= 8) {
 				double sup_ratio = 1.0 + 0.1 * (count + 1);
 				double dsup_ratio = 1.0 + 0.2 * (count + 1);
 				double inf_ratio = 1.0 - 0.1 * (count + 1);
 				double dinf_ratio = 1 / dsup_ratio;
-				if ((y > sup_ratio * x && z > sup_ratio * y) || y > dsup_ratio * x ||
-						(y < inf_ratio * x && z < inf_ratio * y) || y < dinf_ratio * x) {
+				if ((b > sup_ratio * a && c > sup_ratio * b) || b > dsup_ratio * a ||
+						(b < inf_ratio * a && c < inf_ratio * b) || b < dinf_ratio * a) {
 					++count;
 				} else {
 					break;
@@ -55,7 +53,7 @@ void process_series_double_change(const char *word,
 	}
 }
 
-void process_series(const char *word,
+void process_series_linear_model(const char *word,
 	const gsl_multimin_fdfminimizer_type *T,
 	gsl_multimin_function_fdf *fdf,
 	FILE *zeitgeist)
@@ -93,23 +91,28 @@ void fit_gaussians(const char *word, const double *series, size_t inf, size_t su
 	double widening, FILE *zeitgeist)
 {
 	vector<gaussian_entry> gaussians;
-	vector< pair<size_t, int> > counts;
-	bitset<MAX_YEARS> used;
+	vector< pair<size_t, int> > relevant_counts;
 
 	select_gaussians(series, inf, sup, gaussians);
-	relevant_gaussians(gaussians, counts, widening);
-	for (vector< pair<size_t, int> >::iterator it = counts.begin(); it != counts.end(); ++it) {
+	relevant_gaussians(gaussians, relevant_counts, widening);
+	for (vector< pair<size_t, int> >::iterator it = relevant_counts.begin(); it != relevant_counts.end(); ++it) {
 		size_t year = it->first;
-		int count = it->second;
-		if (year >= 1750)
+		if (year >= 1750) {
+			int count = it->second;
 			fprintf(zeitgeist, "%s\t%u\t%d\n", word, (unsigned int) year, count);
+		}
 	}
 }
 
 int main()
 {
-	const char *summary_filename = "data/zeitgeist/summary.txt";
-	FILE *zeitgeist;
+	const char *summary_filenames[] = {
+		"data/zeitgeist/double_change_summary.txt",
+		"data/zeitgeist/linear_model_summary.txt",
+		"data/zeitgeist/s2_gaussian_summary.txt",
+		"data/zeitgeist/s3_gaussian_summary.txt",
+	};
+	FILE *zeitgeists[4];
 
 	const gsl_multimin_fdfminimizer_type *T;
 	gsl_multimin_function_fdf regression_func;
@@ -137,10 +140,12 @@ int main()
 	regression_func.fdf = regression_fdf;
 	regression_func.params = &training_data;
 
-	zeitgeist = fopen(summary_filename, "wt");
-	if (zeitgeist == NULL) {
-		fprintf(stderr, "Could create file %s\n", summary_filename);
-		exit(EXIT_FAILURE);
+	for (size_t i = 0; i < sizeof(zeitgeists) / sizeof(*zeitgeists); i++) {
+		zeitgeists[i] = fopen(summary_filenames[i], "wt");
+		if (zeitgeists[i] == NULL) {
+			fprintf(stderr, "Could create file %s\n", summary_filenames[i]);
+			exit(EXIT_FAILURE);
+		}
 	}
 
 	err = init_dictreader(&dict, "data/sort/googlebooks-eng-all-1gram-20120701-database");
@@ -176,14 +181,16 @@ int main()
 		if (strcmp(words[i], "plague") == 0)
 			print_series(smooth_series);
 #endif
-		//process_series(word, smooth_series, zeitgeist);
-		//process_series(word, T, &regression_func, zeitgeist);
-		fit_gaussians(word, smooth_series, smoothing_window, MAX_YEARS - smoothing_window, 2.0, zeitgeist);
+		process_series_double_change(word, smooth_series, zeitgeists[0]);
+		process_series_linear_model(word, T, &regression_func, zeitgeists[1]);
+		fit_gaussians(word, smooth_series, smoothing_window, MAX_YEARS - smoothing_window, 2.0, zeitgeists[2]);
+		fit_gaussians(word, smooth_series, smoothing_window, MAX_YEARS - smoothing_window, 3.0, zeitgeists[3]);
 	}
 
 out_reader:
 	destroy_dictreader(&dict);
-	fclose(zeitgeist);
+	for (size_t i = 0; i < sizeof(zeitgeists) / sizeof(*zeitgeists); i++)
+		fclose(zeitgeists[i]);
 
 out:
 	return err;
