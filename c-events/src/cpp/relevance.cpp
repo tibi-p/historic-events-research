@@ -8,6 +8,7 @@
 #include "dictionary_types.h"
 #include "gaussian_model.h"
 #include "linear_model.h"
+#include "series.h"
 #include "util.h"
 
 using namespace std;
@@ -65,9 +66,17 @@ void append_csv(const char *filename, const char *word,
 		exit(EXIT_FAILURE);
 	}
 
-	fprintf(f, "%s", word);
+#if 0
+	fprintf(f, "\"%s\"", word);
 	for (i = 0; i < num_elems; i++)
 		fprintf(f, ",%d", counts[i]);
+#else
+	for (i = 0; i < num_elems; i++) {
+		if (i > 0)
+			fprintf(f, ",");
+		fprintf(f, "%d", counts[i]);
+	}
+#endif
 	fprintf(f, "\n");
 
 	fclose(f);
@@ -189,7 +198,7 @@ void fit_gaussians(double *series, size_t inf, size_t sup, int *counts)
 			double ratio = (count + .5) / max_probability;
 			for (size_t i = left; i <= right; i++) {
 				used[i] = true;
-				counts[i] = (int) (ratio * gsl_ran_gaussian_pdf(i - it->mean, it->sigma));
+				counts[i] = (int) (ratio * gsl_ran_gaussian_pdf(i - it->mean, 2 * it->sigma));
 			}
 		}
 	}
@@ -205,32 +214,6 @@ void gaussian_model_series_to_csv(const char *word, double *series)
 	append_csv("data/relevance/gaussian_model.csv", word, counts, MAX_YEARS);
 }
 
-void smoothify_series(double *series, double *smooth_series)
-{
-	const unsigned int smoothing_window = 2;
-	double smoothing_sum = 0.0;
-	unsigned int window_size = 0;
-
-	for (unsigned int j = 0; j < MAX_YEARS + smoothing_window; j++) {
-		if (j < MAX_YEARS) {
-			smoothing_sum += series[j];
-			window_size++;
-		}
-		if (j >= 2 * smoothing_window + 1) {
-			smoothing_sum -= series[j - 2 * smoothing_window - 1];
-			window_size--;
-		}
-		if (j >= smoothing_window) {
-			unsigned int pos = j - smoothing_window;
-			if (smoothing_sum < 0.)
-				smoothing_sum = 0.;
-			if (window_size == 2 * smoothing_window + 1) {
-				smooth_series[pos] = (double) smoothing_sum / window_size;
-			}
-		}
-	}
-}
-
 int handle_entry(const struct dictionary_reader *dictreader, size_t index,
 	const gsl_multimin_fdfminimizer_type *T,
 	gsl_multimin_function_fdf regression_func,
@@ -241,13 +224,14 @@ int handle_entry(const struct dictionary_reader *dictreader, size_t index,
 	const char *word;
 	size_t table_size;
 	int err;
+	const unsigned int smoothing_window = 2;
 
 	err = read_table(dictreader, index, table, &table_size);
 	if (err != 0)
 		goto out;
 
 	table_to_series(dictreader, table, table_size, series);
-	smoothify_series(series, smooth_series);
+	smoothify_series(series, smooth_series, MAX_YEARS, smoothing_window);
 
 	word = dictreader->words[index];
 	double_change_series_to_csv(word, smooth_series);
@@ -279,6 +263,7 @@ int main()
 	int err = 0;
 	const char *words[] = {
 		"war",
+		"Microsoft",
 #if 1
 		"women",
 		"communism",
@@ -324,7 +309,7 @@ int main()
 	remove("data/relevance/double_change.csv");
 	remove("data/relevance/linear_model.csv");
 	remove("data/relevance/gaussian_model.csv");
-
+#if 0
 	for (size_t i = 0; i < sizeof(words) / sizeof(*words); i++) {
 		void *p = bsearch(&words[i], dict.words, dict.num_words,
 			sizeof(*dict.words), string_compare);
@@ -336,7 +321,13 @@ int main()
 				goto out_reader;
 		}
 	}
-
+#else
+	for (size_t i = 0; i < dict.num_words; i++) {
+		err = handle_entry(&dict, i, T, regression_func, smooth_series);
+		if (err != 0)
+			goto out_reader;
+	}
+#endif
 out_reader:
 	destroy_dictreader(&dict);
 

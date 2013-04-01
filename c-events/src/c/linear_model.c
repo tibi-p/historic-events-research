@@ -68,9 +68,6 @@ void generate_ranges(struct static_array *ranges,
 			gsl_vector_set(x, 0, 0.0);
 			gsl_vector_set(x, 1, 0.0);
 			training_data->begin = i;
-#if 0
-			reset_statistics(&training_data->statistics);
-#endif
 		}
 	}
 	append_range(ranges, training_data, x);

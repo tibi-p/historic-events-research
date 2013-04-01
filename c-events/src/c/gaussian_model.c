@@ -86,11 +86,6 @@ double compute_emd(const double *series, size_t left, size_t right,
 		distance += fabs(emd);
 	}
 
-#if 0
-	double ratio = min_sum / (right - left + 1);
-	ratio *= 100;
-#endif
-
 	return distance;
 }
 

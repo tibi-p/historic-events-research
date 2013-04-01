@@ -9,6 +9,7 @@
 #include "dictionary_types.h"
 #include "gaussian_model.h"
 #include "linear_model.h"
+#include "series.h"
 #include "util.h"
 
 using namespace std;
@@ -200,11 +201,9 @@ int main()
 	const unsigned int smoothing_window = 2;
 #if 1
 	struct static_range training_data = { 0, MAX_YEARS, 1500 + smoothing_window,
-		/*{ 0.0, 0.0, 0.0, },*/
 		smooth_series + smoothing_window, MAX_YEARS - 2 * smoothing_window };
 #else
 	struct static_range training_data = { 0, 300, 1700,
-		/*{ 0.0, 0.0, 0.0, },*/
 		smooth_series + 200, 300 };
 #endif
 	int err = 0;
@@ -251,24 +250,7 @@ int main()
 			goto out_reader;
 
 		table_to_series(&dict, table, num_read, series);
-
-		double smoothing_sum = 0.0;
-		unsigned int window_size = 0;
-		for (unsigned int j = 0; j < MAX_YEARS + smoothing_window; j++) {
-			if (j < MAX_YEARS) {
-				smoothing_sum += series[j];
-				window_size++;
-			}
-			if (j >= 2 * smoothing_window + 1) {
-				smoothing_sum -= series[j - 2 * smoothing_window - 1];
-				window_size--;
-			}
-			if (j >= smoothing_window) {
-				unsigned int pos = j - smoothing_window;
-				if (window_size == 2 * smoothing_window + 1)
-					smooth_series[pos] = (double) smoothing_sum / window_size;
-			}
-		}
+		smoothify_series(series, smooth_series, MAX_YEARS, smoothing_window);
 #if 0
 		if (strcmp(words[i], "plague") == 0)
 			print_series(smooth_series);

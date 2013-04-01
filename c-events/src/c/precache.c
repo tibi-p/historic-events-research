@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-#define TIME_FILENAME "sorted_data/googlebooks-eng-all-1gram-20120701-database.time"
+#define TIME_FILENAME "data/sort/googlebooks-eng-all-1gram-20120701-database.time"
 #define BUFFER_SIZE (1 << 16)
 
 int precache_file(const char *filename)
