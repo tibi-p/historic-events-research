@@ -6,6 +6,7 @@
 #include <gsl/gsl_randist.h>
 #include "dictionary_reader.h"
 #include "dictionary_types.h"
+#include "gaussian_finder.h"
 #include "gaussian_model.h"
 #include "linear_model.h"
 #include "series.h"
@@ -15,36 +16,6 @@ using namespace std;
 
 #define BUFFER_SIZE 1008
 #define MAX_ENTRIES (1 << 20)
-
-#define EPSILON 1e-6
-
-struct gaussian_entry {
-
-	size_t left, right;
-	double mean, sigma;
-	double distance, increase;
-
-	gaussian_entry(size_t left, size_t right, double mean, double sigma, double distance, double increase) :
-		left(left), right(right), mean(mean), sigma(sigma), distance(distance), increase(increase) { }
-
-	bool operator<(const gaussian_entry &other) const
-	{
-		if (fabs(distance - other.distance) >= EPSILON)
-			return distance < other.distance;
-		if (fabs(increase - other.increase) >= EPSILON)
-			return increase > other.increase;
-		if (left != other.left)
-			return left < other.left;
-		if (right != other.right)
-			return right < other.right;
-		if (fabs(mean - other.mean) >= EPSILON)
-			return mean < other.mean;
-		if (fabs(sigma - other.sigma) >= EPSILON)
-			return sigma < other.sigma;
-		return false;
-	}
-
-};
 
 double average_match_count(struct series_entry *series, size_t start, size_t end)
 {
@@ -144,40 +115,8 @@ void fit_gaussians(double *series, size_t inf, size_t sup, int *counts)
 {
 	vector<gaussian_entry> gaussians;
 	bitset<MAX_YEARS> used;
-	double partial_moments[MAX_YEARS + 1][NUM_MOMENTS];
-	double value, min_value;
-	double sum, min_sum;
-	double mean, sigma;
-	double emd, kurtosis;
 
-	init_partial_moments(partial_moments, series);
-
-	for (size_t left = inf; left < sup; left++) {
-		min_value = DBL_MAX;
-		sum = 0.;
-		for (size_t right = left; right < sup && right <= left + 50; right++) {
-			value = series[right];
-			if (value < min_value)
-				min_value = value;
-			sum += value;
-			if (right >= left + 4) {
-				min_sum = sum - (right - left + 1) * min_value;
-				kurtosis = compute_kurtosis(partial_moments, left, right,
-					min_value, min_sum, &mean, &sigma);
-				if (fabs(kurtosis) < .05) {
-					emd = compute_emd(series, left, right, min_value, min_sum, mean, sigma);
-					if (emd < .3) {
-						double max_probability = gsl_ran_gaussian_pdf(0, sigma);
-						double increase = min_sum * max_probability / min_value;
-						//printf("{} %zu %zu :: (%lf, %lf) :: [%lf, %lf] :: <%lf, %lf> :: %lf\n", left, right,
-						//	mean, sigma, emd, kurtosis, min_value, min_sum * max_probability, increase);
-						gaussians.push_back(gaussian_entry(left, right, mean, sigma, emd, increase));
-					}
-				}
-			}
-		}
-	}
-	sort(gaussians.begin(), gaussians.end());
+	select_gaussians(series, inf, sup, gaussians);
 
 	for (vector<gaussian_entry>::iterator it = gaussians.begin(); it != gaussians.end(); ++it) {
 		size_t left = it->left;
