@@ -40,7 +40,7 @@ s_{i, t} > \left( 1 + x \right) s_{i, t - 1} \textrm{ and } s_{i, t + 1} > \left
 Similarly, we say that a time series $\left\{ s_{i, t} \right\}$ suffers a double decrease of magnitude $x \in \left[ 0, 1 \right)$ at time $t$ if:
 
 \begin{align}
-\label{eq:double-increase}
+\label{eq:double-decrease}
 s_{i, t} < \left( 1 - x \right) s_{i, t - 1} \textrm{ and } s_{i, t + 1} < \left( 1 - x \right) s_{i, t}.
 \end{align}
 
@@ -58,7 +58,7 @@ Similarly, the notion of single decrease of magnitude $x \in \left[ 0, 1 \right)
 s_{i, t} &< \left( 1 - 2x \right) s_{i, t - 1}.
 \end{align}
 
-As can be noticed, the latter two notions use a factor of $2x$ in the formulas instead of the $x$ used in the double change formulas. The reasoning behind this is that although we don't want to miss any potential peaks, single changes in the time series are very likely to not be a part of a peak. Therefore, I made it harder for single changes to achieve a certain magnitude, while still making sure that the original problem was also solved.
+As can be noticed, the latter two notions use a factor of $2x$ in the formulas instead of the $x$ used in the double change formulas. The reasoning behind this is that although we don't want to miss any potential peaks, single changes in the time series can sometimes not be part of a peak. Therefore, I made it harder for single changes to achieve a certain magnitude, while still making sure that the original problem was also solved.
 
 The magnitude $m_{i, t}$ of the change around a point $t$ in a time series $\left\{ s_{i, t} \right\}$ is defined as the maximum between the magnitude of the double change and the magnitude of the single change at that point. From this, the historical relevance is computed as follows:
 
@@ -110,7 +110,7 @@ r_{i, t} &= \max \left( \left\lfloor m_{i, t} \right\rfloor, 0 \right).
 
 \subsubsection{Gaussian Model Peak Detection}
 
-Another completely different idea for peak detection is to notice that peaks are usually shaped like Gaussian distribution, i.e. they are bell-shaped. So, let's consider a time interval $\left[ l, r \right] \subseteq \left[ 1500, 2008 \right]$ and the time series for some word $w_i$ on that interval, $\left\{ s_{i, t} \right\}_{t=l}^{r}$. Since we want to approximate the series by a normal distribution, it should be probably normalized to that it sums to 1. However, this is not enough, since a Gaussian has an infimum of 0, while a peak can be offset by a significant value. This offset is of course computed as the minimum value of the time series on the given interval. Thus, we define the normalized time series $\left\{ g_{i, t} \right\}_{t=l}^{r}$ as:
+Another completely different idea for peak detection is to notice that peaks are usually shaped like a Gaussian distribution, i.e. they are bell-shaped. So, let's consider a time interval $\left[ l, r \right] \subseteq \left[ 1500, 2008 \right]$ and the time series for some word $w_i$ on that interval, $\left\{ s_{i, t} \right\}_{t=l}^{r}$. Since we want to approximate the series by a normal distribution, it should be probably normalized to that it sums to 1. However, this is not enough, since a Gaussian has an infimum of 0, while a peak can be offset by a significant value. This offset is of course computed as the minimum value of the time series on the given interval. Thus, we define the normalized time series $\left\{ g_{i, t} \right\}_{t=l}^{r}$ as:
 
 \begin{align}
 \label{eq:gaussian-normalization}
@@ -121,9 +121,9 @@ This is approximated by a normal distribution $N \left( \mu, \sigma \right)$ wit
 
 \begin{align}
 \label{eq:mu-gaussian-model}
-\mu &= \frac{\sum_{t=l}^{r} g_{i, t}}{r - l + 1}, \\
+\mu &= \frac{\sum_{t=l}^{r} g_{i, t} t}{r - l + 1}, \\
 \label{eq:sigma-gaussian-model}
-\sigma^2 &= \frac{\sum_{t=l}^{r} \left( g_{i, t} - \mu \right)^2}{r - l + 1}.
+\sigma^2 &= \frac{\sum_{t=l}^{r} g_{i, t} \left( t - \mu \right)^2}{r - l + 1}.
 \end{align}
 
 In order to compute the similarity between $g_{i, t}$ and $N \left( \mu, \sigma \right)$, a variation on the earth mover's distance \cite{rubner98metric} shall be used. Although the former probability distribution is discrete, while the latter is continuous, we shall nonetheless assume that the latter is also discrete by considering only its values in the points $t \in \overline{l, r}$.
