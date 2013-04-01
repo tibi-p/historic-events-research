@@ -37,4 +37,7 @@ struct gaussian_entry {
 
 void select_gaussians(const double *series, size_t inf, size_t sup, std::vector<gaussian_entry> &gaussians);
 
+void relevant_gaussians(const std::vector<gaussian_entry> &gaussians,
+	std::vector< std::pair<size_t, int> > &counts, double widening);
+
 #endif /* GAUSSIAN_FINDER_H_ */

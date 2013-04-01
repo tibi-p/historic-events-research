@@ -1,5 +1,6 @@
 #include "gaussian_finder.h"
 #include <algorithm>
+#include <bitset>
 #include <limits>
 #include <gsl/gsl_randist.h>
 #include "dictionary_reader.h"
@@ -44,4 +45,37 @@ void select_gaussians(const double *series, size_t inf, size_t sup, vector<gauss
 		}
 	}
 	sort(gaussians.begin(), gaussians.end());
+}
+
+void relevant_gaussians(const vector<gaussian_entry> &gaussians,
+	vector< pair<size_t, int> > &counts, double widening)
+{
+	bitset<MAX_YEARS> used;
+
+	counts.clear();
+	for (vector<gaussian_entry>::const_iterator it = gaussians.begin(); it != gaussians.end(); ++it) {
+		size_t left = it->left;
+		size_t right = it->right;
+		bool valid = true;
+		for (size_t i = left; i <= right; i++)
+			if (used[i]) {
+				valid = false;
+				break;
+			}
+		if (valid) {
+			double max_probability = gsl_ran_gaussian_pdf(0, it->sigma);
+			double increase = it->increase;
+			if (increase > 1.0)
+				increase = 1.0;
+			int count = (int) (10 * increase);
+			//printf("count=%d\n", count);
+			double ratio = (count + .5) / max_probability;
+			for (size_t i = left; i <= right; i++) {
+				used[i] = true;
+				int current_count = (int) (ratio * gsl_ran_gaussian_pdf(i - it->mean, widening * it->sigma));
+				if (current_count > 0)
+					counts.push_back(make_pair(MIN_YEAR + i, current_count));
+			}
+		}
+	}
 }

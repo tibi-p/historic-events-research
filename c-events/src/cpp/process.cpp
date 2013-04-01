@@ -89,38 +89,20 @@ void print_series(double *series)
 	printf(")\n");
 }
 
-void fit_gaussians(const char *word, double *series, size_t inf, size_t sup, FILE *zeitgeist)
+void fit_gaussians(const char *word, const double *series, size_t inf, size_t sup,
+	double widening, FILE *zeitgeist)
 {
 	vector<gaussian_entry> gaussians;
+	vector< pair<size_t, int> > counts;
 	bitset<MAX_YEARS> used;
 
 	select_gaussians(series, inf, sup, gaussians);
-
-	for (vector<gaussian_entry>::iterator it = gaussians.begin(); it != gaussians.end(); ++it) {
-		size_t left = it->left;
-		size_t right = it->right;
-		bool valid = true;
-		for (size_t i = left; i <= right; i++)
-			if (used[i]) {
-				valid = false;
-				break;
-			}
-		if (valid) {
-			double max_probability = gsl_ran_gaussian_pdf(0, it->sigma);
-			double increase = it->increase;
-			if (increase > 1.)
-				increase = 1.;
-			int count = (int) (10 * increase);
-			//printf("count=%d\n", count);
-			double ratio = (count + .5) / max_probability;
-			for (size_t i = left; i <= right; i++) {
-				used[i] = true;
-				//int current_count = (int) (ratio * gsl_ran_gaussian_pdf(i - it->mean, it->sigma));
-				int current_count = (int) (ratio * gsl_ran_gaussian_pdf(i - it->mean, 2 * it->sigma));
-				if (current_count > 0 && i >= 250)
-					fprintf(zeitgeist, "%s\t%d\t%d\n", word, (int) (1500 + i), current_count);
-			}
-		}
+	relevant_gaussians(gaussians, counts, widening);
+	for (vector< pair<size_t, int> >::iterator it = counts.begin(); it != counts.end(); ++it) {
+		size_t year = it->first;
+		int count = it->second;
+		if (year >= 1750)
+			fprintf(zeitgeist, "%s\t%u\t%d\n", word, (unsigned int) year, count);
 	}
 }
 
@@ -155,16 +137,16 @@ int main()
 	regression_func.fdf = regression_fdf;
 	regression_func.params = &training_data;
 
-	err = init_dictreader(&dict, "data/sort/googlebooks-eng-all-1gram-20120701-database");
-	if (err != 0)
-		goto out;
-	//printf("num_words=%lu\n", dict.num_words);
-
 	zeitgeist = fopen(summary_filename, "wt");
 	if (zeitgeist == NULL) {
 		fprintf(stderr, "Could create file %s\n", summary_filename);
 		exit(EXIT_FAILURE);
 	}
+
+	err = init_dictreader(&dict, "data/sort/googlebooks-eng-all-1gram-20120701-database");
+	if (err != 0)
+		goto out;
+	//printf("num_words=%lu\n", dict.num_words);
 
 	init_partial_sums();
 	memset(smooth_series, 0, sizeof(smooth_series));
@@ -196,7 +178,7 @@ int main()
 #endif
 		//process_series(word, smooth_series, zeitgeist);
 		//process_series(word, T, &regression_func, zeitgeist);
-		fit_gaussians(word, smooth_series, smoothing_window, MAX_YEARS - smoothing_window, zeitgeist);
+		fit_gaussians(word, smooth_series, smoothing_window, MAX_YEARS - smoothing_window, 2.0, zeitgeist);
 	}
 
 out_reader:
