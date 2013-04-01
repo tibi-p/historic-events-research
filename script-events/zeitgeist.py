@@ -1,6 +1,7 @@
 #!/usr/bin/pypy
 from __future__ import print_function
 import os
+import sys
 
 def is_valid_word(word):
 	return len(word) > 0 and word[0].isalpha() and not '.' in word and not ',' in word
@@ -9,7 +10,7 @@ def filter_word_pairs(word_pairs):
 	word_map = { }
 	for (word, mult) in word_pairs:
 		tokens = word.split('_')
-		if len(tokens) >= 1:
+		if len(tokens) == 1:
 			word = tokens[0]
 			if word in word_map:
 				count = word_map[word]
@@ -27,12 +28,15 @@ def parse_summary(filename):
 			if len(tokens) >= 2:
 				word = tokens[0]
 				if is_valid_word(word):
-					year = int(tokens[1])
-					if len(tokens) >= 3:
-						mult = int(tokens[2])
-					else:
-						mult = 1
-					v[year].append((word, mult))
+					try:
+						year = int(tokens[1])
+						if len(tokens) >= 3:
+							mult = int(tokens[2])
+						else:
+							mult = 1
+						v[year].append((word, mult))
+					except IndexError, e:
+						print(e, file=sys.stderr)
 
 	for year, word_pairs in enumerate(v):
 		words = [ ]
@@ -43,14 +47,23 @@ def parse_summary(filename):
 
 	return v
 
-directory = 'data/zeitgeist'
-summary_filename = os.path.join(directory, 'summary.txt')
+directory = os.path.join('data', 'zeitgeist')
+summary_suffix = '_summary.txt'
 
-with open('data/zeitgeist/history.csv', 'w') as f:
-	v = parse_summary(summary_filename)
-	id = 0
-	line_fmt = '%d,%d,year %d,%s'
-	for year, words in enumerate(v):
-		if len(words) > 0:
-			id += 1
-			print(line_fmt % (id, year, year, ' '.join(words)), file=f)
+filenames = os.listdir(directory)
+filenames = filter(lambda x: x.endswith(summary_suffix), filenames)
+
+for filename in filenames:
+	pos = len(filename) - len(summary_suffix)
+	prefix = filename[0:pos]
+	summary_filename = os.path.join(directory, filename)
+	history_filename = os.path.join(directory, '%s_history.csv' % (prefix,))
+
+	with open(history_filename, 'w') as f:
+		v = parse_summary(summary_filename)
+		id = 0
+		line_fmt = '%d,%d,year %d,%s'
+		for year, words in enumerate(v):
+			if len(words) > 0:
+				id += 1
+				print(line_fmt % (id, year, year, ' '.join(words)), file=f)
