@@ -78,7 +78,7 @@ def process_topics(directory):
 
 	for _, topic in mean_years:
 		years = topic_years[topic]
-		if len(years) > 5:
+		if len(years) > 2:
 			ranges = to_range_list(years)
 			ranges = map(range_to_str, ranges)
 			ranges = ', '.join(ranges)
