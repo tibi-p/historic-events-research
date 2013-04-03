@@ -3,6 +3,7 @@ from __future__ import print_function
 import csv
 import os
 import sys
+import numpy as np
 from collections import defaultdict
 
 def get_last_directory(directory):
@@ -92,7 +93,7 @@ def process_topics(directory):
 
 	mean_years = [ ]
 	for topic, years in topic_years.iteritems():
-		mean_year = sum(years) / float(len(years))
+		mean_year = np.mean(years)
 		mean_years.append((mean_year, topic))
 	mean_years.sort()
 

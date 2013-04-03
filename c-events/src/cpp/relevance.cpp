@@ -1,9 +1,8 @@
 #include <algorithm>
-#include <bitset>
+#include <limits>
 #include <vector>
 #include <cstdlib>
 #include <cstring>
-#include <gsl/gsl_randist.h>
 #include "dictionary_reader.h"
 #include "dictionary_types.h"
 #include "gaussian_finder.h"
@@ -111,13 +110,11 @@ void linear_model_series_to_csv(const char *word,
 	append_csv("data/relevance/linear_model.csv", word, counts, MAX_YEARS);
 }
 
-void fit_gaussians(double *series, size_t inf, size_t sup, int *counts)
+void fit_gaussians(const vector<gaussian_entry> &gaussians, double widening, int *counts)
 {
-	vector<gaussian_entry> gaussians;
 	vector< pair<size_t, int> > relevant_counts;
 
-	select_gaussians(series, inf, sup, gaussians);
-	relevant_gaussians(gaussians, relevant_counts, 2.0);
+	relevant_gaussians(gaussians, relevant_counts, widening);
 	for (vector< pair<size_t, int> >::iterator it = relevant_counts.begin(); it != relevant_counts.end(); ++it) {
 		size_t year = it->first;
 		int count = it->second;
@@ -125,14 +122,28 @@ void fit_gaussians(double *series, size_t inf, size_t sup, int *counts)
 	}
 }
 
-void gaussian_model_series_to_csv(const char *word, double *series)
+void gaussian_model_series_to_csv(const char *word, const double *series)
 {
+	vector<gaussian_entry> gaussians;
 	int counts[MAX_YEARS];
 
-	memset(counts, 0, sizeof(counts));
-	fit_gaussians(series, 2, MAX_YEARS - 2, counts);
+	select_gaussians(series, 2, MAX_YEARS - 2, gaussians);
 
-	append_csv("data/relevance/gaussian_model.csv", word, counts, MAX_YEARS);
+	memset(counts, 0, sizeof(counts));
+	fit_gaussians(gaussians, 1.0, counts);
+	append_csv("data/relevance/s1_gaussian.csv", word, counts, MAX_YEARS);
+
+	memset(counts, 0, sizeof(counts));
+	fit_gaussians(gaussians, 2.0, counts);
+	append_csv("data/relevance/s2_gaussian.csv", word, counts, MAX_YEARS);
+
+	memset(counts, 0, sizeof(counts));
+	fit_gaussians(gaussians, 3.0, counts);
+	append_csv("data/relevance/s3_gaussian.csv", word, counts, MAX_YEARS);
+
+	memset(counts, 0, sizeof(counts));
+	fit_gaussians(gaussians, numeric_limits<double>::max(), counts);
+	append_csv("data/relevance/sinf_gaussian.csv", word, counts, MAX_YEARS);
 }
 
 int handle_entry(const struct dictionary_reader *dictreader, size_t index,
@@ -148,18 +159,15 @@ int handle_entry(const struct dictionary_reader *dictreader, size_t index,
 	const unsigned int smoothing_window = 2;
 
 	err = read_table(dictreader, index, table, &table_size);
-	if (err != 0)
-		goto out;
+	if (err == 0) {
+		table_to_series(dictreader, table, table_size, series);
+		smoothify_series(series, smooth_series, MAX_YEARS, smoothing_window);
 
-	table_to_series(dictreader, table, table_size, series);
-	smoothify_series(series, smooth_series, MAX_YEARS, smoothing_window);
-
-	word = dictreader->words[index];
-	double_change_series_to_csv(word, smooth_series);
-	gaussian_model_series_to_csv(word, smooth_series);
-	linear_model_series_to_csv(word, T, &regression_func);
-
-out:
+		word = dictreader->words[index];
+		double_change_series_to_csv(word, smooth_series);
+		gaussian_model_series_to_csv(word, smooth_series);
+		linear_model_series_to_csv(word, T, &regression_func);
+	}
 	return err;
 }
 
@@ -179,7 +187,6 @@ int main()
 	struct dictionary_reader dict;
 	const unsigned int smoothing_window = 2;
 	struct static_range training_data = { 0, MAX_YEARS, 1500 + smoothing_window,
-		/*{ 0.0, 0.0, 0.0, },*/
 		smooth_series + smoothing_window, MAX_YEARS - 2 * smoothing_window };
 	int err = 0;
 	const char *words[] = {
@@ -211,6 +218,7 @@ int main()
 		"Jew",
 #endif
 	};
+	size_t percent = 0;
 
 	T = gsl_multimin_fdfminimizer_conjugate_fr;
 
@@ -244,6 +252,12 @@ int main()
 	}
 #else
 	for (size_t i = 0; i < dict.num_words; i++) {
+		size_t new_percent = (100 * i) / dict.num_words;
+		if (new_percent > percent) {
+			percent = new_percent;
+			if (percent % 2 == 0)
+				printf("%u%% done\n", (unsigned int) percent);
+		}
 		err = handle_entry(&dict, i, T, regression_func, smooth_series);
 		if (err != 0)
 			goto out_reader;
