@@ -64,17 +64,22 @@ void relevant_gaussians(const vector<gaussian_entry> &gaussians,
 			}
 		if (valid) {
 			double max_probability = gsl_ran_gaussian_pdf(0, it->sigma);
-			double increase = it->increase;
-			if (increase > 1.0)
-				increase = 1.0;
+			double increase = min(it->increase, 1.0);
 			int count = (int) (10 * increase);
-			//printf("count=%d\n", count);
 			double ratio = (count + .5) / max_probability;
+			double mean = it->mean;
+			double sigma = it->sigma;
 			for (size_t i = left; i <= right; i++) {
 				used[i] = true;
-				int current_count = (int) (ratio * gsl_ran_gaussian_pdf(i - it->mean, widening * it->sigma));
-				if (current_count > 0)
-					relevant_counts.push_back(make_pair(MIN_YEAR + i, current_count));
+				int entry_count;
+				if (widening != numeric_limits<double>::max()) {
+					double sample = gsl_ran_gaussian_pdf(i - mean, widening * sigma);
+					entry_count = (int) (ratio * sample);
+				} else {
+					entry_count = count;
+				}
+				if (entry_count > 0)
+					relevant_counts.push_back(make_pair(i, entry_count));
 			}
 		}
 	}

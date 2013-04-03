@@ -120,10 +120,8 @@ void fit_gaussians(double *series, size_t inf, size_t sup, int *counts)
 	relevant_gaussians(gaussians, relevant_counts, 2.0);
 	for (vector< pair<size_t, int> >::iterator it = relevant_counts.begin(); it != relevant_counts.end(); ++it) {
 		size_t year = it->first;
-		if (year >= 1750) {
-			int count = it->second;
-			counts[year - MIN_YEAR] = count;
-		}
+		int count = it->second;
+		counts[year] = count;
 	}
 }
 

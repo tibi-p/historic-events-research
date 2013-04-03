@@ -1,10 +1,9 @@
 #include <algorithm>
-#include <bitset>
+#include <limits>
 #include <vector>
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
-#include <gsl/gsl_randist.h>
 #include "dictionary_reader.h"
 #include "dictionary_types.h"
 #include "gaussian_finder.h"
@@ -48,7 +47,7 @@ void process_series_double_change(const char *word,
 				}
 			}
 			if (count > 0)
-				fprintf(zeitgeist, "%s\t%d\t%d\n", word, 1500 + j, count);
+				fprintf(zeitgeist, "%s\t%d\t%d\n", word, j, count);
 		}
 	}
 }
@@ -66,7 +65,7 @@ void process_series_linear_model(const char *word,
 		const struct range_entry *entry = &ranges.array[i];
 		double score = -log(fabs(entry->slope));
 		score = 2 * (score_threshold - score);
-		if (score >= 1.0 && entry->left >= 1750) {
+		if (score >= 1.0) {
 			for (size_t j = entry->left; j <= entry->right; j++)
 				fprintf(zeitgeist, "%s\t%lu\t%d\n", word,
 					(unsigned long) j, (int) score);
@@ -74,7 +73,7 @@ void process_series_linear_model(const char *word,
 	}
 }
 
-void print_series(double *series)
+void print_series(const double *series)
 {
 	printf("c(");
 	for (size_t j = 0; j < MAX_YEARS; j++) {
@@ -97,22 +96,22 @@ void fit_gaussians(const char *word, const double *series, size_t inf, size_t su
 	relevant_gaussians(gaussians, relevant_counts, widening);
 	for (vector< pair<size_t, int> >::iterator it = relevant_counts.begin(); it != relevant_counts.end(); ++it) {
 		size_t year = it->first;
-		if (year >= 1750) {
-			int count = it->second;
-			fprintf(zeitgeist, "%s\t%u\t%d\n", word, (unsigned int) year, count);
-		}
+		int count = it->second;
+		fprintf(zeitgeist, "%s\t%u\t%d\n", word, (unsigned int) year, count);
 	}
 }
 
 int main()
 {
 	const char *summary_filenames[] = {
-		"data/zeitgeist/double_change_summary.txt",
-		"data/zeitgeist/linear_model_summary.txt",
-		"data/zeitgeist/s2_gaussian_summary.txt",
-		"data/zeitgeist/s3_gaussian_summary.txt",
+		"data/zeitgeist/summary/double_change_summary.txt",
+		"data/zeitgeist/summary/linear_model_summary.txt",
+		"data/zeitgeist/summary/s1_gaussian_summary.txt",
+		"data/zeitgeist/summary/s2_gaussian_summary.txt",
+		"data/zeitgeist/summary/s3_gaussian_summary.txt",
+		"data/zeitgeist/summary/sinf_gaussian_summary.txt",
 	};
-	FILE *zeitgeists[4];
+	FILE *zeitgeists[6];
 
 	const gsl_multimin_fdfminimizer_type *T;
 	gsl_multimin_function_fdf regression_func;
@@ -124,12 +123,13 @@ int main()
 	size_t num_read;
 	const unsigned int smoothing_window = 2;
 #if 1
-	struct static_range training_data = { 0, MAX_YEARS, 1500 + smoothing_window,
+	struct static_range training_data = { 0, MAX_YEARS, smoothing_window,
 		smooth_series + smoothing_window, MAX_YEARS - 2 * smoothing_window };
 #else
 	struct static_range training_data = { 0, 300, 1700,
 		smooth_series + 200, 300 };
 #endif
+	size_t percent = 0;
 	int err = 0;
 
 	T = gsl_multimin_fdfminimizer_conjugate_fr;
@@ -169,8 +169,12 @@ int main()
 			continue;
 		if (dict.database[i].total_match_count < (1 << 20))
 			continue;
-		if (i % 1000 == 0)
-			printf("iter=%zu\n", i);
+		size_t new_percent = (100 * i) / dict.num_words;
+		if (new_percent > percent) {
+			percent = new_percent;
+			if (percent % 4 == 0)
+				printf("%u%% done\n", (unsigned int) percent);
+		}
 		err = read_table(&dict, i, table, &num_read);
 		if (err != 0)
 			goto out_reader;
@@ -183,8 +187,10 @@ int main()
 #endif
 		process_series_double_change(word, smooth_series, zeitgeists[0]);
 		process_series_linear_model(word, T, &regression_func, zeitgeists[1]);
-		fit_gaussians(word, smooth_series, smoothing_window, MAX_YEARS - smoothing_window, 2.0, zeitgeists[2]);
-		fit_gaussians(word, smooth_series, smoothing_window, MAX_YEARS - smoothing_window, 3.0, zeitgeists[3]);
+		fit_gaussians(word, smooth_series, smoothing_window, MAX_YEARS - smoothing_window, 1.0, zeitgeists[2]);
+		fit_gaussians(word, smooth_series, smoothing_window, MAX_YEARS - smoothing_window, 2.0, zeitgeists[3]);
+		fit_gaussians(word, smooth_series, smoothing_window, MAX_YEARS - smoothing_window, 3.0, zeitgeists[4]);
+		fit_gaussians(word, smooth_series, smoothing_window, MAX_YEARS - smoothing_window, numeric_limits<double>::max(), zeitgeists[5]);
 	}
 
 out_reader:
