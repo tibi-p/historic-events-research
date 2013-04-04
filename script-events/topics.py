@@ -97,19 +97,26 @@ def process_topics(directory):
 		mean_years.append((mean_year, topic))
 	mean_years.sort()
 
-	for _, topic in mean_years:
-		years = topic_years[topic]
-		if len(years) > 2:
-			ranges = to_range_list(years)
-			ranges = map(range_to_str, ranges)
-			ranges = ', '.join(ranges)
-			words = topic_words[topic]
-			tokens = [ ranges ]
-			tokens.extend(words)
-			print('\n\t'.join(tokens))
-			print()
+	topic_filename = os.path.join('data', 'topics', model_type + '_historic_topics.txt')
+	with open(topic_filename, 'w') as f:
+		for _, topic in mean_years:
+			years = topic_years[topic]
+			if len(years) > 2:
+				ranges = to_range_list(years)
+				ranges = map(range_to_str, ranges)
+				ranges = ', '.join(ranges)
+				words = topic_words[topic]
+				tokens = [ ranges ]
+				tokens.extend(words)
+				print('\n\t'.join(tokens), file=f)
+				print(file=f)
+
+def main(argv):
+	lda_directory = os.path.join('data', 'lda')
+	directories = os.listdir(lda_directory)
+	for directory in directories:
+		full_directory = os.path.join(lda_directory, directory)
+		process_topics(full_directory)
 
 if __name__ == '__main__':
-	argv = sys.argv
-	if len(argv) >= 2:
-		process_topics(argv[1])
+	main(sys.argv)

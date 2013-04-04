@@ -158,13 +158,6 @@ int main()
 
 	for (size_t i = 0; i < dict.num_words; i++) {
 		const char *word = dict.words[i];
-#if 0
-		if (
-				strcmp(word, "war") != 0 &&
-				strcmp(word, "trench") != 0 &&
-				1)
-			continue;
-#endif
 		if (strchr(word, '_') != NULL)
 			continue;
 		if (dict.database[i].total_match_count < (1 << 20))
