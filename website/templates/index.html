@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+{% load i18n %}
+{% load url from future %}
+<html>
+<head>
+    <title>
+    {% block title %}
+        Historic Events Identification
+    {% endblock %}
+    </title>
+
+    <link href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.18/themes/start/jquery-ui.css" rel="stylesheet" type="text/css"/>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js" type="text/javascript"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.18/jquery-ui.min.js" type="text/javascript"></script>
+    <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+
+    <script src="http://ajax.aspnetcdn.com/ajax/jquery.validate/1.9/jquery.validate.min.js" type="text/javascript"></script>
+
+    <link rel="stylesheet" type="text/css" href="https://www.google.com/css/google.css">
+    <link rel="stylesheet" type="text/css"
+        href="https://www.google.com/css/modules/buttons/g-button.css">
+    <link rel="stylesheet" type="text/css" href="http://books.google.com/ngrams/style.css">
+
+    <style type="text/css">
+    </style>
+
+    <script type="text/javascript">
+    // Draw the chart.
+    var chart = null;
+
+    // Callback that creates and populates a data table, and draws the chart.
+    function drawChart() {
+        chart = new google.visualization.LineChart(
+            document.getElementById('chart_div'));
+
+        function selectHandler() {
+            chart.setSelection(null);
+        }
+
+        google.visualization.events.addListener(chart, 'select', selectHandler);
+        $('#submit-query').trigger('click');
+    }
+
+    function drawAjaxChart(words, all_series) {
+        // Create the data table.
+        var data = new google.visualization.DataTable();
+
+        // Add column headings, with escaping for JS strings.
+        data.addColumn('number', 'Year');
+        for (var i = 0; i < words.length; i++)
+            data.addColumn('number', words[i]);
+
+        // Add graph data, without autoescaping.
+        data.addRows(all_series);
+
+        // Format the data columns.
+        var formatter = new google.visualization.NumberFormat({
+            pattern: '0.0000######%'
+        });
+        for (var col = 1; col < data.getNumberOfColumns(); ++col) {
+            formatter.format(data, col);
+        }
+
+        // Set general chart options.
+        var options = {
+            chartArea: { left: 100, width: "85%" },
+            focusTarget: 'category',
+            legend: { position: 'top' },
+            tooltip: { isHtml: true },
+            hAxis: { format: '####', gridlines: { count: 1 } },
+            vAxis: {
+                format: '0.00########%',
+                gridlines: { count: 6 },
+                minValue: 0,
+                baselineColor: 'black'
+            },
+            animation: {
+                duration: 1000,
+                easing: 'inAndOut',
+            },
+        }
+
+        chart.draw(data, options);
+    }
+
+    // Load the Visualization API.
+    google.load('visualization', '1', {'packages':['corechart']});
+
+    // Set a callback to run when the Google Visualization API is loaded.
+    google.setOnLoadCallback(drawChart);
+
+    $(function() {
+        $('#submit-query').click(function () {
+            var queryForm = $('#query');
+            var action = queryForm.attr('action');
+            $.ajax({
+                type: "GET",
+                url: action,
+                data: queryForm.serialize(),
+                success: function(response_data) {
+                    var words = [ ];
+                    var all_series = [ ];
+                    var year_start = response_data.year_start;
+                    var year_end = response_data.year_end;
+
+                    var j_year_start = queryForm.find('[name="year_start"]');
+                    j_year_start.val(year_start);
+                    var j_year_end = queryForm.find('[name="year_end"]');
+                    j_year_end.val(year_end);
+
+                    var ngrams = response_data.ngrams;
+                    for (var i in ngrams) {
+                        var obj = ngrams[i];
+                        words.push(obj.word);
+                        var series = obj.series;
+                        for (var j = 0; j < series.length; j++) {
+                            if (!(j in all_series)) {
+                                all_series[j] = [ year_start + j ];
+                                for (var k = 0; k < i; k++)
+                                    all_series[j].push(0.0);
+                            }
+                            all_series[j].push(series[j]);
+                        }
+                    }
+                    drawAjaxChart(words, all_series);
+                }
+            });
+            return false;
+        });
+    });
+</script>
+</head>
+
+<body id="container">
+
+<h1 id="logo">
+    <table>
+        <tr>
+            <td style="padding-left: 0cm; color: #009925; font-size: 28px;">Ngram Viewer + Historical Relevance</td>
+        </tr>
+    </table>
+</h1>
+
+<div style="clear:both"></div>
+
+<div class="ngrams_query_section">
+    <form id="query" action="/graph" method="get" name="input">
+        <div class="query_graphthese_line">
+            Graph these <span style="color:#3369e8;font-weight:bold">case-sensitive</span> comma-separated words:
+            <input type="text" name="content" size="60" value="war,slavery" maxlength=240 />
+        </div>
+        <div class="query_dcs_line">
+            between
+            <input type="text" name="year_start" size="4" value="1750" maxlength=4 />
+            and
+            <input type="text" name="year_end" size="4" value="2008" maxlength=4 />
+            with smoothing of
+            <select name="smoothing">
+                <option value="0"> 0 </option>
+                <option value="1"> 1 </option>
+                <option value="2" selected> 2 </option>
+                <option value="3"> 3 </option>
+                <option value="4"> 4 </option>
+                <option value="5"> 5 </option>
+                <option value="6"> 6 </option>
+                <option value="7"> 7 </option>
+                <option value="8"> 8 </option>
+                <option value="9"> 9 </option>
+                <option value="10"> 10 </option>
+                <option value="20"> 20 </option>
+                <option value="30"> 30 </option>
+                <option value="40"> 40 </option>
+                <option value="50"> 50 </option>
+            </select>.
+        </div>
+
+        <input type="hidden" name="share" value="" >
+
+        <div class="query_submit_line">
+            <input id="submit-query" type="submit" value="Search lots of books" />
+        </div>
+    </form>
+</div>
+
+<div style="clear:both"></div>
+
+<div class="ngrams_chart_section">
+    <center>
+        <table width="100%">
+            <tr>
+                <td width="90%">
+                <div align="left" id="chart_div" style="height: 400px;"></div>
+                </td>
+            </tr>
+        </table>
+    </center>
+</div>
+
+</body>
+
+</html>
