@@ -21,7 +21,7 @@ def filter_word_pairs(word_pairs):
 	return word_map.iteritems()
 
 def parse_summary(filename):
-	v = [ [ ] for _ in xrange(2012) ]
+	v = [ [ ] for _ in xrange(512) ]
 	with open(summary_filename) as f:
 		for line in f:
 			tokens = line.rstrip().split()
@@ -40,30 +40,34 @@ def parse_summary(filename):
 
 	for year, word_pairs in enumerate(v):
 		words = [ ]
-		for word, mult in filter_word_pairs(word_pairs):
-			for _ in xrange(mult):
-				words.append(word)
+		if year >= 250:
+			for word, mult in filter_word_pairs(word_pairs):
+				for _ in xrange(mult):
+					words.append(word)
 		v[year] = words
 
 	return v
 
 directory = os.path.join('data', 'zeitgeist')
+summary_directory = os.path.join(directory, 'summary')
+history_directory = os.path.join(directory, 'history')
+
 summary_suffix = '_summary.txt'
 
-filenames = os.listdir(directory)
+filenames = os.listdir(summary_directory)
 filenames = filter(lambda x: x.endswith(summary_suffix), filenames)
 
 for filename in filenames:
 	pos = len(filename) - len(summary_suffix)
 	prefix = filename[0:pos]
-	summary_filename = os.path.join(directory, filename)
-	history_filename = os.path.join(directory, '%s_history.csv' % (prefix,))
+	summary_filename = os.path.join(summary_directory, filename)
+	history_filename = os.path.join(history_directory, '%s_history.csv' % (prefix,))
 
 	with open(history_filename, 'w') as f:
 		v = parse_summary(summary_filename)
-		id = 0
+		row_id = 0
 		line_fmt = '%d,%d,year %d,%s'
 		for year, words in enumerate(v):
 			if len(words) > 0:
-				id += 1
-				print(line_fmt % (id, year, year, ' '.join(words)), file=f)
+				row_id += 1
+				print(line_fmt % (row_id, year, 1500 + year, ' '.join(words)), file=f)
