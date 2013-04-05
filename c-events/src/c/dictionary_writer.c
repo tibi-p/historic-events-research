@@ -3,7 +3,7 @@
 #include "dictionary_writer.h"
 #include "util.h"
 
-#define MIN_MATCH_COUNT (1 << 16)
+#define MIN_MATCH_COUNT (1 << 14)
 
 int init_dictionary(struct dictionary_writer *dict, const char *base_filename)
 {
@@ -12,11 +12,6 @@ int init_dictionary(struct dictionary_writer *dict, const char *base_filename)
 	memset(dict, 0, sizeof(*dict));
 
 	err = init_dictfiles(&dict->files, base_filename, "wb");
-	if (err != 0) {
-		goto out;
-	}
-
-out:
 	return err;
 }
 
