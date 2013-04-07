@@ -15,7 +15,6 @@
 using namespace std;
 
 #define BUFFER_SIZE 1008
-#define MAX_ENTRIES (1 << 20)
 
 double average_match_count(struct series_entry *series, size_t start, size_t end)
 {

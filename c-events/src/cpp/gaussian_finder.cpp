@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <bitset>
 #include <limits>
+#include <cmath>
 #include <gsl/gsl_randist.h>
 #include "dictionary_reader.h"
 #include "gaussian_model.h"
@@ -31,14 +32,20 @@ void select_gaussians(const double *series, size_t inf, size_t sup, vector<gauss
 				min_sum = sum - (right - left + 1) * min_value;
 				kurtosis = compute_kurtosis(partial_moments, left, right,
 					min_value, min_sum, &mean, &sigma);
+				if ((left >= 494 && left <= 496) && (right >= 504))
+					printf("(%zu,%zu) DAT KURTOSIS %lf vs emd=%lf\n", left, right, kurtosis, compute_emd(series, left, right, min_value, min_sum, mean, sigma));
 				if (fabs(kurtosis) < .05) {
 					emd = compute_emd(series, left, right, min_value, min_sum, mean, sigma);
 					if (emd < .3) {
+						size_t safe_left = (size_t) max(mean - 3 * sigma, 0.0);
+						size_t safe_right = (size_t) ceil(mean + 3 * sigma);
+						size_t true_left = max(left, safe_left);
+						size_t true_right = min(right, safe_right);
 						double max_probability = gsl_ran_gaussian_pdf(0, sigma);
 						double increase = min_sum * max_probability / min_value;
-						//printf("{} %zu %zu :: (%lf, %lf) :: [%lf, %lf] :: <%lf, %lf> :: %lf\n", left, right,
-						//	mean, sigma, emd, kurtosis, min_value, min_sum * max_probability, increase);
-						gaussians.push_back(gaussian_entry(left, right, mean, sigma, emd, increase));
+						printf("{} %zu %zu :: (%lf, %lf) :: [%lf, %lf] :: <%lf, %lf> :: %lf\n", true_left, true_right,
+							mean, sigma, emd, kurtosis, min_value, min_sum * max_probability, increase);
+						gaussians.push_back(gaussian_entry(true_left, true_right, mean, sigma, emd, increase));
 					}
 				}
 			}

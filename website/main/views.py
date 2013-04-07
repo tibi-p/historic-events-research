@@ -38,6 +38,7 @@ def graph(request):
 		smoothing = int(params[u'smoothing'])
 		year_start = int(params[u'year_start'])
 		year_end = int(params[u'year_end'])
+		model_set = set(params.getlist(u'model_type'))
 
 		year_start = get_actual_year(year_start)
 		year_end = get_actual_year(year_end)
@@ -61,13 +62,14 @@ def graph(request):
 			})
 
 			for model_type, matrix in matrices.iteritems():
-				row = matrix.getrow(index)
-				row_series = row_to_series(row)
-				row_series = row_series[(year_start - 1500):(year_end - 1500 + 1)]
-				relevances.append({
-					'word': word + '_' + model_type,
-					'series': row_series,
-				})
+				if model_type in model_set:
+					row = matrix.getrow(index)
+					row_series = row_to_series(row)
+					row_series = row_series[(year_start - 1500):(year_end - 1500 + 1)]
+					relevances.append({
+						'word': word + '_' + model_type,
+						'series': row_series,
+					})
 
 		indexed_maxima = list(enumerate(local_maxima))
 		indexed_maxima = sorted([ (v, k) for k, v in indexed_maxima ], reverse=True)
