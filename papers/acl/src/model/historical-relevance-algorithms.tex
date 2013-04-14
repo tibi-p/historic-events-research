@@ -28,7 +28,7 @@ For this analysis to be tractable on the large amounts of data available in the 
 
 Arguably the simplest way of detecting peaks is by making use of the fact that peaks usually consist of a period of abrupt increase, followed by another period of abrupt decrease. A computationally inexpensive method for doing this is detecting periods of time marked by a double change of the time series in the same direction, either increasing or decreasing.
 
-Formally, we say that a time series $\left\{ s_{i, t} \right\}$ suffers a double increase (Equation~\ref{eq:double-increase}) or decrease (Equation~\ref{eq:double-decrease}) of magnitude $x \in \left[ 0, 1 \right)$ at time $t$ if:
+Formally, we say that a time series $\left\{ s_{i, t} \right\}$ suffers a double increase or decrease if it increases or decrease twice consecutively. Furthermore, the magnitude of that increase (Equation~\ref{eq:double-increase}) or decrease (Equation~\ref{eq:double-decrease}) at time $t$ is defined as the maximum $x \in \left[ 0, 1 \right]$ that satisfies one of the following equations:
 
 \begin{align}
 \label{eq:double-increase}
@@ -38,7 +38,7 @@ s_{i, t} > \left( 1 + x \right) s_{i, t - 1}, \, s_{i, t + 1} > \left( 1 + x \ri
 s_{i, t} < \left( 1 - x \right) s_{i, t - 1}, \, s_{i, t + 1} < \left( 1 - x \right) s_{i, t}
 \end{align}
 
-One problem that may appear with these definitions is that, for example, during the ascent part of the peak, at often times the increase rate will randomly dip below a certain threshold, causing the algorithm to miss valuable information. To this end, the notion of single increase (Equation~\ref{eq:single-increase}) or single decrease (Equation~\ref{eq:single-decrease}) of magnitude $x \in \left[ 0, 1 \right)$ is also introduced:
+One problem that may appear with these definitions is that, for example, during the ascent part of the peak, at often times the increase rate will randomly dip below a certain threshold, causing the algorithm to miss valuable information. To this end, the magnitude of a single increase (Equation~\ref{eq:single-increase}) or of a single decrease (Equation~\ref{eq:single-decrease}) at time $t$ is defined as the maximum $x \in \left[ 0, 1 \right]$ that satisfies one of:
 
 \begin{align}
 \label{eq:single-increase}
@@ -69,7 +69,7 @@ Drawing on the previous idea of periods of abrupt increase and decrease, one can
     \For { $t \in 1501 \to 2008$ }
         \State $a, b, err \gets \textrm{lm} \left( \left\{ s_{i, k} \right\}_{k = u}^t \right)$
         \If { $\log(err) >= -5$ }
-            \State $m_i \left( u, t \right) \gets 2 \cdot \left( 3 + \log \left| a \right| \right)$
+            \State $m_i \left( \left[ u, t \right] \right) \gets 2 \cdot \left( 3 + \log \left| a \right| \right)$
             \State $u \gets t$
         \EndIf
     \EndFor

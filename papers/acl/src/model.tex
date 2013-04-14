@@ -9,6 +9,8 @@ The analysis shall be based on the Google Books Ngram Corpus and the time series
 u_{k} \left( i, t \right) = \frac{\sum_{d = -k}^{k} s_{i, t + d}}{2k + 1}.
 \end{align}
 
+The value of this window size was empirically chosen to be $k = 2$.
+
 The data provided by the Google Books Ngram Corpus is immense (about 30 GB), so trying to identify historic events using all of the raw data seems to be an intractable problem. Thus, a better idea is to model the historical relevance of an n-gram in a given year on a discrete scale, for example the integers in $\left[ 0, 10 \right]$, where $0$ would reflect the n-gram's lack of importance and $10$ would reflect a year-defining n-gram. Due to the implicit localized nature of historic events, any given n-gram should attain historical relevance only within a small time frame. Thus, most of the entries in the reduced time series should be $0$, leading to a highly sparse representation. Therefore, not only is this transformation useful from a practical point of view (it drastically reduces the computational resources required for the analysis), but it also has theoretical arguments that it maps well to the task of historic events identification.
 
 \subsection{Historical Relevance Algorithms}
