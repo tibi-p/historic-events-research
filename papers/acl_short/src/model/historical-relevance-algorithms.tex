@@ -16,7 +16,7 @@
 
 First, let's analyze the time series of the historically charged n-gram war (see Figure~\ref{fig:war-series}). It contains several well-defined peaks, corresponding to historic events like: Seven Years' War ($1755 - 1765$), World War I ($1910 - 1926$) and World War II ($1936 - 1953$). Further historic peaks, albeit less obvious, include: American Revolutionary War ($1775 - 1783$), American Civil War ($1860 - 1871$) and Vietnam War ($1961 - 1978$). Note that a singular plot can only reveal so much information, but by determining historical relevance for different n-grams and correlating the results, one can viably get a picture of a historic event.
 
-The remainder of this section shall focus on algorithms for peak detection that can also quantitatively measure the historical relevance. For example, the three large peaks of the n-gram war should be assigned a high historical relevance.
+The remainder of this section focuses on algorithms for peak detection that also measure the historical relevance. In future work, they shall be compared with more advanced methods of finding bursty features such as the one presented in \newcite{He:2007:AFT:1277741.1277779}.
 
 \subsubsection{Double Change Peak Detection}
 
@@ -32,7 +32,7 @@ s_{i, t} < \left( 1 - x \right) s_{i, t - 1}, \, s_{i, t + 1} < \left( 1 - x \ri
 
 Furthermore, the magnitude of a single increase or of a single decrease at time $t$ is defined as the maximum $x \in \left[ 0, 1 \right]$ that satisfies one of: $s_{i, t} > \left( 1 + 2x \right) s_{i, t - 1}$ or $s_{i, t} < \left( 1 - 2x \right) s_{i, t - 1}$.
 
-The magnitude $m_{i, t}$ of the change around a point $t$ is the maximum between the magnitude of the double change and the magnitude of the single change at that point. Finally, the historical relevance is $r_{i, t} = \min \left( \left\lfloor 10 m_{i, t} \right\rfloor, 9 \right)$.
+The magnitude $m_{i, t}$ of the change around a point $t$ is the maximum between the magnitude of the double change and that of the single change at that point. Finally, the historical relevance is $r_{i, t} = \min \left( \left\lfloor 10 m_{i, t} \right\rfloor, 9 \right)$.
 
 \subsubsection{Linear Model Peak Detection}
 

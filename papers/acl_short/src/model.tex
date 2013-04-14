@@ -4,7 +4,7 @@
 
 The analysis shall be based on the Google Books Ngram Corpus. Let us denote the normalized time series for a given word $w_i$ by $\left\{ s_{i, t} \right\}_{t = 1500}^{2008}$, smoothed using the central moving 5-average.
 
-Instead of using the raw data, the historical relevance of an n-gram in a given year is modeled on a discrete scale, for example the integers in $\left[ 0, 10 \right]$, where $0$ would reflect the n-gram's lack of importance and $10$ would reflect a year-defining n-gram. Due to the implicit localized nature of historic events, any n-gram should attain historical relevance only within a small time frame, leading to a highly sparse representation.
+Instead of using the raw data, the historical relevance of an n-gram in a given year is modeled on a discrete scale, for example the integers in $\left[ 0, 10 \right]$, where $0$ would reflect the n-gram's lack of importance and $10$ would reflect a year-defining n-gram. This notion is used for detecting bursty features, as defined in \newcite{Fung05parameterfree}, where the goal was detecting events on smaller corpora such as the 1-year Reuters News Corpus.
 
 \subsection{Historical Relevance Algorithms}
 \label{sec:historical-relevance-algorithms}
