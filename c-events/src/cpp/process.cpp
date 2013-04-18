@@ -14,8 +14,6 @@
 
 using namespace std;
 
-#define BUFFER_SIZE 1008
-
 double average_match_count(struct series_entry *series, size_t start, size_t end)
 {
 	double acc = 0;
@@ -150,7 +148,6 @@ int main()
 	err = init_dictreader(&dict, "data/sort/googlebooks-eng-all-1gram-20120701-database");
 	if (err != 0)
 		goto out;
-	//printf("num_words=%lu\n", dict.num_words);
 
 	init_partial_sums();
 	memset(smooth_series, 0, sizeof(smooth_series));
@@ -159,7 +156,7 @@ int main()
 		const char *word = dict.words[i];
 		if (strchr(word, '_') != NULL)
 			continue;
-		if (dict.database[i].total_match_count < (1 << 20))
+		if (dict.database[i].total_match_count < (1 << 18))
 			continue;
 		size_t new_percent = (100 * i) / dict.num_words;
 		if (new_percent > percent) {
