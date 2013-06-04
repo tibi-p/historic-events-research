@@ -129,7 +129,7 @@ int main()
 	size_t percent = 0;
 	int err = 0;
 
-	T = gsl_multimin_fdfminimizer_conjugate_fr;
+	T = gsl_multimin_fdfminimizer_conjugate_pr;
 
 	regression_func.n = 2;
 	regression_func.f = regression_f;

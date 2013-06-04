@@ -216,7 +216,7 @@ int main()
 	};
 	FILE *relevance_files[sizeof(filenames) / sizeof(*filenames)];
 
-	T = gsl_multimin_fdfminimizer_conjugate_fr;
+	T = gsl_multimin_fdfminimizer_conjugate_pr;
 
 	regression_func.n = 2;
 	regression_func.f = regression_f;
@@ -257,8 +257,10 @@ int main()
 		size_t new_percent = (100 * i) / dict.num_words;
 		if (new_percent > percent) {
 			percent = new_percent;
-			if (percent % 4 == 0)
+			if (percent % 2 == 0) {
 				printf("%u%% done\n", (unsigned int) percent);
+				break;
+			}
 		}
 		err = handle_entry(&dict, i, T, regression_func, smooth_series, relevance_files);
 		if (err != 0)
