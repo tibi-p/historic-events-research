@@ -8,6 +8,7 @@
 #include "dictionary_types.h"
 #include "gaussian_finder.h"
 #include "gaussian_model.h"
+#include "numerical_discrepancy.h"
 #include "linear_model.h"
 #include "series.h"
 #include "util.h"
@@ -90,17 +91,35 @@ void fit_gaussians(const char *word, const double *series, size_t inf, size_t su
 	}
 }
 
+void process_series_numerical_discrepancy(const char *word, double *series, FILE *zeitgeist)
+{
+	vector< pair< pair<size_t, size_t>, int > > intervals;
+
+	fit_discrepancy(series, 2, intervals);
+	sort(intervals.begin(), intervals.end());
+	for (size_t i = 0; i < intervals.size(); i++) {
+		pair<size_t, size_t> interval = intervals[i].first;
+		int score = 2 * intervals[i].second + 1;
+		for (size_t j = interval.first; j <= interval.second; j++)
+			fprintf(zeitgeist, "%s\t%u\t%d\n", word, (unsigned int) j, score);
+	}
+}
+
 int main()
 {
 	const char *summary_filenames[] = {
 		"data/zeitgeist/summary/double_change_summary.txt",
 		"data/zeitgeist/summary/linear_model_summary.txt",
+		"data/zeitgeist/summary/numerical_discrepancy_summary.txt",
 		"data/zeitgeist/summary/s1_gaussian_summary.txt",
 		"data/zeitgeist/summary/s2_gaussian_summary.txt",
 		"data/zeitgeist/summary/s3_gaussian_summary.txt",
 		"data/zeitgeist/summary/sinf_gaussian_summary.txt",
 	};
-	FILE *zeitgeists[6];
+	const double parameters[] = {
+		1.0, 2.0, 3.0, numeric_limits<double>::max()
+	};
+	FILE *zeitgeists[sizeof(summary_filenames) / sizeof(*summary_filenames)];
 
 	const gsl_multimin_fdfminimizer_type *T;
 	gsl_multimin_function_fdf regression_func;
@@ -129,17 +148,17 @@ int main()
 	regression_func.fdf = regression_fdf;
 	regression_func.params = &training_data;
 
-	for (size_t i = 0; i < sizeof(zeitgeists) / sizeof(*zeitgeists); i++) {
-		zeitgeists[i] = fopen(summary_filenames[i], "wt");
-		if (zeitgeists[i] == NULL) {
-			fprintf(stderr, "Could create file %s\n", summary_filenames[i]);
-			exit(EXIT_FAILURE);
-		}
-	}
-
 	err = init_dictreader(&dict, "data/sort/googlebooks-eng-all-1gram-20120701-database");
 	if (err != 0)
 		goto out;
+
+	for (size_t i = 0; i < sizeof(zeitgeists) / sizeof(*zeitgeists); i++) {
+		if (!file_exists(summary_filenames[i])) {
+			zeitgeists[i] = fopen(summary_filenames[i], "wt");
+			if (zeitgeists[i] == NULL)
+				goto out_reader;
+		}
+	}
 
 	init_partial_sums();
 	memset(smooth_series, 0, sizeof(smooth_series));
@@ -166,18 +185,24 @@ int main()
 		if (strcmp(words[i], "plague") == 0)
 			print_series(smooth_series);
 #endif
-		process_series_double_change(word, smooth_series, zeitgeists[0]);
-		process_series_linear_model(word, T, &regression_func, zeitgeists[1]);
-		fit_gaussians(word, smooth_series, smoothing_window, MAX_YEARS - smoothing_window, 1.0, zeitgeists[2]);
-		fit_gaussians(word, smooth_series, smoothing_window, MAX_YEARS - smoothing_window, 2.0, zeitgeists[3]);
-		fit_gaussians(word, smooth_series, smoothing_window, MAX_YEARS - smoothing_window, 3.0, zeitgeists[4]);
-		fit_gaussians(word, smooth_series, smoothing_window, MAX_YEARS - smoothing_window, numeric_limits<double>::max(), zeitgeists[5]);
+		if (zeitgeists[0] != NULL)
+			process_series_double_change(word, smooth_series, zeitgeists[0]);
+		if (zeitgeists[1] != NULL)
+			process_series_linear_model(word, T, &regression_func, zeitgeists[1]);
+		if (zeitgeists[2] != NULL)
+			process_series_numerical_discrepancy(word, smooth_series, zeitgeists[2]);
+		for (size_t j = 0; j < sizeof(parameters) / sizeof(*parameters); j++)
+			if (zeitgeists[j + 3] != NULL) {
+				fit_gaussians(word, smooth_series, smoothing_window,
+					MAX_YEARS - smoothing_window, parameters[j], zeitgeists[j + 3]);
+			}
 	}
 
 out_reader:
 	destroy_dictreader(&dict);
 	for (size_t i = 0; i < sizeof(zeitgeists) / sizeof(*zeitgeists); i++)
-		fclose(zeitgeists[i]);
+		if (zeitgeists[i] != NULL)
+			fclose(zeitgeists[i]);
 
 out:
 	return err;
