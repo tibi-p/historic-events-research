@@ -21,35 +21,27 @@ double average_match_count(struct series_entry *series, size_t start, size_t end
 	return acc / (end - start);
 }
 
-void append_csv(const char *filename, const char *word,
+void append_csv(FILE *f, const char *word,
 	const int *counts, size_t num_elems)
 {
-	FILE *f;
-	size_t i;
-
-	f = fopen(filename, "at");
-	if (f == NULL) {
-		fprintf(stderr, "Could not open %s for writing\n", filename);
-		exit(EXIT_FAILURE);
-	}
+	if (f == NULL)
+		return;
 
 #if 0
 	fprintf(f, "\"%s\"", word);
-	for (i = 0; i < num_elems; i++)
+	for (size_t i = 0; i < num_elems; i++)
 		fprintf(f, ",%d", counts[i]);
 #else
-	for (i = 0; i < num_elems; i++) {
+	for (size_t i = 0; i < num_elems; i++) {
 		if (i > 0)
 			fprintf(f, ",");
 		fprintf(f, "%d", counts[i]);
 	}
 #endif
 	fprintf(f, "\n");
-
-	fclose(f);
 }
 
-void double_change_series_to_csv(const char *word, double *series)
+void double_change_series_to_csv(const char *word, double *series, FILE *relevance_file)
 {
 	int counts[MAX_YEARS];
 
@@ -76,12 +68,12 @@ void double_change_series_to_csv(const char *word, double *series)
 		}
 	}
 
-	append_csv("data/relevance/double_change.csv", word, counts, MAX_YEARS);
+	append_csv(relevance_file, word, counts, MAX_YEARS);
 }
 
 void linear_model_series_to_csv(const char *word,
 	const gsl_multimin_fdfminimizer_type *T,
-	gsl_multimin_function_fdf *fdf)
+	gsl_multimin_function_fdf *fdf, FILE *relevance_file)
 {
 	int counts[MAX_YEARS];
 	struct static_array ranges;
@@ -104,7 +96,7 @@ void linear_model_series_to_csv(const char *word,
 		}
 	}
 
-	append_csv("data/relevance/linear_model.csv", word, counts, MAX_YEARS);
+	append_csv(relevance_file, word, counts, MAX_YEARS);
 }
 
 void fit_gaussians(const vector<gaussian_entry> &gaussians, double widening, int *counts)
@@ -119,34 +111,27 @@ void fit_gaussians(const vector<gaussian_entry> &gaussians, double widening, int
 	}
 }
 
-void gaussian_model_series_to_csv(const char *word, const double *series)
+void gaussian_model_series_to_csv(const char *word, const double *series, FILE *relevance_files[])
 {
+	const double parameters[] = {
+		1.0, 2.0, 3.0, numeric_limits<double>::max()
+	};
 	vector<gaussian_entry> gaussians;
 	int counts[MAX_YEARS];
 
 	select_gaussians(series, 2, MAX_YEARS - 2, gaussians);
 
-	memset(counts, 0, sizeof(counts));
-	fit_gaussians(gaussians, 1.0, counts);
-	append_csv("data/relevance/s1_gaussian.csv", word, counts, MAX_YEARS);
-
-	memset(counts, 0, sizeof(counts));
-	fit_gaussians(gaussians, 2.0, counts);
-	append_csv("data/relevance/s2_gaussian.csv", word, counts, MAX_YEARS);
-
-	memset(counts, 0, sizeof(counts));
-	fit_gaussians(gaussians, 3.0, counts);
-	append_csv("data/relevance/s3_gaussian.csv", word, counts, MAX_YEARS);
-
-	memset(counts, 0, sizeof(counts));
-	fit_gaussians(gaussians, numeric_limits<double>::max(), counts);
-	append_csv("data/relevance/sinf_gaussian.csv", word, counts, MAX_YEARS);
+	for (size_t i = 0; i < sizeof(parameters) / sizeof(*parameters); i++) {
+		memset(counts, 0, sizeof(counts));
+		fit_gaussians(gaussians, parameters[i], counts);
+		append_csv(relevance_files[i], word, counts, MAX_YEARS);
+	}
 }
 
 int handle_entry(const struct dictionary_reader *dictreader, size_t index,
 	const gsl_multimin_fdfminimizer_type *T,
 	gsl_multimin_function_fdf regression_func,
-	double *smooth_series)
+	double *smooth_series, FILE *relevance_files[])
 {
 	struct time_entry table[MAX_YEARS];
 	double series[MAX_YEARS];
@@ -161,9 +146,14 @@ int handle_entry(const struct dictionary_reader *dictreader, size_t index,
 		smoothify_series(series, smooth_series, MAX_YEARS, smoothing_window);
 
 		word = dictreader->words[index];
-		double_change_series_to_csv(word, smooth_series);
-		gaussian_model_series_to_csv(word, smooth_series);
-		linear_model_series_to_csv(word, T, &regression_func);
+		if (relevance_files[0] != NULL)
+			double_change_series_to_csv(word, smooth_series, relevance_files[0]);
+		if (relevance_files[2] != NULL || relevance_files[3] != NULL ||
+				relevance_files[4] != NULL || relevance_files[5] != NULL) {
+			gaussian_model_series_to_csv(word, smooth_series, &relevance_files[2]);
+		}
+		if (relevance_files[1] != NULL)
+			linear_model_series_to_csv(word, T, &regression_func, relevance_files[1]);
 	}
 	return err;
 }
@@ -216,6 +206,15 @@ int main()
 #endif
 	};
 	size_t percent = 0;
+	const char *filenames[] = {
+		"data/relevance/double_change.csv",
+		"data/relevance/linear_model.csv",
+		"data/relevance/s1_gaussian.csv",
+		"data/relevance/s2_gaussian.csv",
+		"data/relevance/s3_gaussian.csv",
+		"data/relevance/sinf_gaussian.csv",
+	};
+	FILE *relevance_files[sizeof(filenames) / sizeof(*filenames)];
 
 	T = gsl_multimin_fdfminimizer_conjugate_fr;
 
@@ -229,12 +228,18 @@ int main()
 	if (err != 0)
 		goto out;
 
+	memset(relevance_files, 0, sizeof(relevance_files));
+	for (size_t i = 0; i < sizeof(filenames) / sizeof(*filenames); i++) {
+		if (!file_exists(filenames[i])) {
+			relevance_files[i] = fopen(filenames[i], "wt");
+			if (relevance_files[i] == NULL)
+				goto out_files;
+		}
+	}
+
 	init_partial_sums();
 	memset(smooth_series, 0, sizeof(smooth_series));
 
-	remove("data/relevance/double_change.csv");
-	remove("data/relevance/linear_model.csv");
-	remove("data/relevance/gaussian_model.csv");
 #if 0
 	for (size_t i = 0; i < sizeof(words) / sizeof(*words); i++) {
 		void *p = bsearch(&words[i], dict.words, dict.num_words,
@@ -244,7 +249,7 @@ int main()
 			ptrdiff_t index = marker - dict.words;
 			err = handle_entry(&dict, (size_t) index, T, regression_func, smooth_series);
 			if (err != 0)
-				goto out_reader;
+				goto out_files;
 		}
 	}
 #else
@@ -252,15 +257,21 @@ int main()
 		size_t new_percent = (100 * i) / dict.num_words;
 		if (new_percent > percent) {
 			percent = new_percent;
-			if (percent % 2 == 0)
+			if (percent % 4 == 0)
 				printf("%u%% done\n", (unsigned int) percent);
 		}
-		err = handle_entry(&dict, i, T, regression_func, smooth_series);
+		err = handle_entry(&dict, i, T, regression_func, smooth_series, relevance_files);
 		if (err != 0)
-			goto out_reader;
+			goto out_files;
 	}
 #endif
-out_reader:
+
+out_files:
+	for (size_t i = 0; i < sizeof(relevance_files) / sizeof(*relevance_files); i++) {
+		if (relevance_files[i] != NULL)
+			fclose(relevance_files[i]);
+	}
+
 	destroy_dictreader(&dict);
 
 out:

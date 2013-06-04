@@ -23,7 +23,7 @@ double average_match_count(struct series_entry *series, size_t start, size_t end
 }
 
 void process_series_double_change(const char *word,
-	double *series, FILE *zeitgeist)
+	const double *series, FILE *zeitgeist)
 {
 	for (int j = 2; j < MAX_YEARS - 2; j++) {
 		double a = series[j - 1];
