@@ -7,19 +7,12 @@
 #include "dictionary_types.h"
 #include "gaussian_finder.h"
 #include "gaussian_model.h"
+#include "numerical_discrepancy.h"
 #include "linear_model.h"
 #include "series.h"
 #include "util.h"
 
 using namespace std;
-
-double average_match_count(struct series_entry *series, size_t start, size_t end)
-{
-	double acc = 0;
-	for (size_t i = start; i < end; i++)
-		acc += series[i].match_count;
-	return acc / (end - start);
-}
 
 void append_csv(FILE *f, const char *word,
 	const int *counts, size_t num_elems)
@@ -128,6 +121,23 @@ void gaussian_model_series_to_csv(const char *word, const double *series, FILE *
 	}
 }
 
+void numerical_discrepancy_series_to_csv(const char *word, double *series, FILE *relevance_file)
+{
+	vector< pair< pair<size_t, size_t>, int > > intervals;
+	int counts[MAX_YEARS];
+
+	fit_discrepancy(series, 2, intervals);
+	memset(counts, 0, sizeof(counts));
+	for (size_t i = 0; i < intervals.size(); i++) {
+		pair<size_t, size_t> interval = intervals[i].first;
+		int score = 2 * intervals[i].second + 1;
+		for (size_t j = interval.first; j <= interval.second; j++)
+			counts[j] = score;
+	}
+
+	append_csv(relevance_file, word, counts, MAX_YEARS);
+}
+
 int handle_entry(const struct dictionary_reader *dictreader, size_t index,
 	const gsl_multimin_fdfminimizer_type *T,
 	gsl_multimin_function_fdf regression_func,
@@ -148,12 +158,14 @@ int handle_entry(const struct dictionary_reader *dictreader, size_t index,
 		word = dictreader->words[index];
 		if (relevance_files[0] != NULL)
 			double_change_series_to_csv(word, smooth_series, relevance_files[0]);
-		if (relevance_files[2] != NULL || relevance_files[3] != NULL ||
-				relevance_files[4] != NULL || relevance_files[5] != NULL) {
-			gaussian_model_series_to_csv(word, smooth_series, &relevance_files[2]);
-		}
 		if (relevance_files[1] != NULL)
 			linear_model_series_to_csv(word, T, &regression_func, relevance_files[1]);
+		if (relevance_files[2] != NULL)
+			numerical_discrepancy_series_to_csv(word, smooth_series, relevance_files[2]);
+		if (relevance_files[3] != NULL || relevance_files[4] != NULL ||
+				relevance_files[5] != NULL || relevance_files[6] != NULL) {
+			gaussian_model_series_to_csv(word, smooth_series, &relevance_files[3]);
+		}
 	}
 	return err;
 }
@@ -209,6 +221,7 @@ int main()
 	const char *filenames[] = {
 		"data/relevance/double_change.csv",
 		"data/relevance/linear_model.csv",
+		"data/relevance/numerical_discrepancy.csv",
 		"data/relevance/s1_gaussian.csv",
 		"data/relevance/s2_gaussian.csv",
 		"data/relevance/s3_gaussian.csv",
@@ -257,10 +270,8 @@ int main()
 		size_t new_percent = (100 * i) / dict.num_words;
 		if (new_percent > percent) {
 			percent = new_percent;
-			if (percent % 2 == 0) {
+			if (percent % 4 == 0)
 				printf("%u%% done\n", (unsigned int) percent);
-				break;
-			}
 		}
 		err = handle_entry(&dict, i, T, regression_func, smooth_series, relevance_files);
 		if (err != 0)

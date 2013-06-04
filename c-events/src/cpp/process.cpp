@@ -14,14 +14,6 @@
 
 using namespace std;
 
-double average_match_count(struct series_entry *series, size_t start, size_t end)
-{
-	double acc = 0;
-	for (size_t i = start; i < end; i++)
-		acc += series[i].match_count;
-	return acc / (end - start);
-}
-
 void process_series_double_change(const char *word,
 	const double *series, FILE *zeitgeist)
 {
