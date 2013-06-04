@@ -130,8 +130,8 @@ void table_to_series(const struct dictionary_reader *dictreader,
 	for (j = 0; j < table_size; j++) {
 		entry = &table[j];
 		if (entry->year < MIN_YEAR || entry->year >= MIN_YEAR + MAX_YEARS) {
-			fprintf(stderr, "The %luth entry has an invalid year: %lu\n",
-				(unsigned long) j, (unsigned long) entry->year);
+			fprintf(stderr, "The %luth entry has an invalid year: %u\n",
+				(unsigned long) j, (unsigned int) entry->year);
 			exit(EXIT_FAILURE);
 		}
 		pos = entry->year - MIN_YEAR;

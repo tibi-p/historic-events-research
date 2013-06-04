@@ -24,6 +24,7 @@ extern "C" {
 char * concatenate(const char *left, const char *right);
 long get_file_size(FILE *f);
 long long get_file_size64(FILE *f);
+int file_exists(const char *filename);
 
 #ifdef __cplusplus
 }

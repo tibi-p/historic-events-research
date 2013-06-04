@@ -13,9 +13,6 @@
 
 using namespace std;
 
-#define BUFFER_SIZE 1008
-#define MAX_ENTRIES (1 << 20)
-
 double average_match_count(struct series_entry *series, size_t start, size_t end)
 {
 	double acc = 0;
@@ -25,7 +22,7 @@ double average_match_count(struct series_entry *series, size_t start, size_t end
 }
 
 void append_csv(const char *filename, const char *word,
-	int *counts, size_t num_elems)
+	const int *counts, size_t num_elems)
 {
 	FILE *f;
 	size_t i;

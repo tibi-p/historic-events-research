@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include "util.h"
 
 char * concatenate(const char *left, const char *right)
@@ -51,4 +52,9 @@ long long get_file_size64(FILE *f)
 		return -1LL;
 
 	return file_size;
+}
+
+int file_exists(const char *filename)
+{
+	return access(filename, F_OK) == 0;
 }
