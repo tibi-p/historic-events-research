@@ -6,9 +6,11 @@ LDFLAGS=-lgsl -lgslcblas
 CLUSTERING_PARSER_OBJS=clustering.o
 CSV_PARSER_OBJS=csv_parser.o dictionary_files.o dictionary_writer.o util.o
 PROCESS_OBJS=process.o dictionary_files.o dictionary_reader.o util.o \
-	gaussian_finder.o numerical_discrepancy.o gaussian_model.o linear_model.o series.o static_array.o
+	generic_processor.o gaussian_finder.o numerical_discrepancy.o \
+	gaussian_model.o linear_model.o file.o series.o static_array.o
 RELEVANCE_OBJS=relevance.o dictionary_files.o dictionary_reader.o util.o \
-	gaussian_finder.o numerical_discrepancy.o kleinberg.o gaussian_model.o linear_model.o series.o static_array.o
+	generic_processor.o gaussian_finder.o numerical_discrepancy.o kleinberg.o \
+	gaussian_model.o linear_model.o file.o series.o static_array.o
 OUT_DIR=../../bin
 OUT_CLUSTERING_PARSER_OBJS=$(addprefix $(OUT_DIR)/,$(CLUSTERING_PARSER_OBJS))
 OUT_CSV_PARSER_OBJS=$(addprefix $(OUT_DIR)/,$(CSV_PARSER_OBJS))

@@ -1,4 +1,5 @@
 #include "numerical_discrepancy.h"
+#include <algorithm>
 #include <vector>
 #include <cstdlib>
 #include <cstring>
@@ -112,5 +113,50 @@ void fit_discrepancy(const double *series, unsigned int smoothing_window,
 		} else {
 			i++;
 		}
+	}
+}
+
+numerical_discrepancy_processor::numerical_discrepancy_processor(double *series, const char *filename)
+	: series(series), efile(filename) { }
+
+numerical_discrepancy_processor::~numerical_discrepancy_processor() { }
+
+void numerical_discrepancy_processor::compute_relevance(const char *word)
+{
+	vector< pair< pair<size_t, size_t>, int > > intervals;
+	int counts[MAX_YEARS];
+
+	fit_discrepancy(series, 2, intervals);
+	memset(counts, 0, sizeof(counts));
+	for (size_t i = 0; i < intervals.size(); i++) {
+		pair<size_t, size_t> interval = intervals[i].first;
+		int score = 2 * intervals[i].second + 1;
+		for (size_t j = interval.first; j <= interval.second; j++)
+			counts[j] = score;
+	}
+
+	print_relevance_csv(efile.f, word, counts, MAX_YEARS);
+}
+
+void numerical_discrepancy_processor::compute_summary(const char *word)
+{
+	vector< pair< pair<size_t, size_t>, int > > intervals;
+
+	fit_discrepancy(series, 2, intervals);
+	sort(intervals.begin(), intervals.end());
+	for (size_t i = 0; i < intervals.size(); i++) {
+		pair<size_t, size_t> interval = intervals[i].first;
+		int score = intervals[i].second / 2 + 1;
+		for (size_t j = interval.first; j <= interval.second; j++)
+			print_summary_txt(efile.f, word, (unsigned int) j, score);
+	}
+}
+
+numerical_discrepancy_processor * numerical_discrepancy_processor::create(double *series, const char *filename)
+{
+	try {
+		return new numerical_discrepancy_processor(series, filename);
+	} catch (file_exception &fe) {
+		return NULL;
 	}
 }

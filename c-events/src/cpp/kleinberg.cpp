@@ -25,17 +25,6 @@ size_t find_min_position(const vector<T> &v)
 	return (size_t) diff;
 }
 
-#include <iostream>
-
-template<class T>
-void print_vector(const char *name, const vector<T> &v)
-{
-	cout << name << ':';
-	for (typename vector<T>::const_iterator it = v.begin(); it != v.end(); ++it)
-		cout << ' ' << *it;
-	cout << endl;
-}
-
 bool batch_viterbi(const vector<unsigned int> &docs, const vector<unsigned int> &relevant,
 	vector<size_t> &hidden_states)
 {
@@ -65,23 +54,13 @@ bool batch_viterbi(const vector<unsigned int> &docs, const vector<unsigned int> 
 		alphas.push_back(alphas.back() * s);
 	size_t num_states = alphas.size();
 
-	//print_vector("alphas", alphas);
-
 	for (size_t i = 0; i < sizeof(dp) / sizeof(*dp); i++)
 		dp[i].resize(num_states);
 
 	(*prev)[0] = 0.0;
 	for (size_t i = 1; i < prev->size(); i++)
 		(*prev)[i] = numeric_limits<double>::max();
-#if 0
-	printf("Gangnam:");
-	for (size_t i = 0; i < n; i++) {
-		if (i % 20 == 0)
-			printf("\n%4zu:", MIN_YEAR + i);
-		printf(" %.2lf", (double) relevant[i] / docs[i]);
-	}
-	printf("\n");
-#endif
+
 	for (size_t i = 0; i < n; i++) {
 		unsigned int r = relevant[i];
 		unsigned int nr = docs[i] - r;
@@ -100,10 +79,6 @@ bool batch_viterbi(const vector<unsigned int> &docs, const vector<unsigned int> 
 					}
 				}
 			}
-			//printf("i=%zu j=%zu min_value=%lf min_index=%zu :: %lf %lf %lf\n", i, j, min_value, min_index,
-			//	choose, r * log(alphas[j]), nr * log(1 - alphas[j]));
-			//if (i == 2)
-			//	exit(EXIT_FAILURE);
 			if (min_index == numeric_limits<size_t>::max()) {
 				fprintf(stderr, "Could not a minimal index for batch Viterbi\n");
 				exit(EXIT_FAILURE);
@@ -112,7 +87,6 @@ bool batch_viterbi(const vector<unsigned int> &docs, const vector<unsigned int> 
 				(*next)[j] = min_value + choose - r * log(alphas[j]) - nr * log(1 - alphas[j]);
 			else
 				(*next)[j] = numeric_limits<double>::max();
-			//printf("> nj=%lf\n", next->operator[](j));
 			psi[i].push_back(min_index);
 		}
 		swap(prev, next);
@@ -128,4 +102,49 @@ bool batch_viterbi(const vector<unsigned int> &docs, const vector<unsigned int> 
 	reverse(hidden_states.begin(), hidden_states.end());
 
 	return true;
+}
+
+kleinberg_processor::kleinberg_processor(vector<unsigned int> &docs,
+	vector<unsigned int> &relevant, const char *filename)
+	: docs(docs), relevant(relevant), efile(filename) { }
+
+kleinberg_processor::~kleinberg_processor() { }
+
+void kleinberg_processor::compute_relevance(const char *word)
+{
+	vector<size_t> hidden_states;
+	int counts[MAX_YEARS];
+
+	batch_viterbi(docs, relevant, hidden_states);
+
+	const size_t num_elems = min<size_t>(hidden_states.size(), MAX_YEARS);
+	for (size_t i = 0; i < num_elems; i++)
+		counts[i] = hidden_states[i];
+	fill(counts + num_elems, counts + MAX_YEARS, 0);
+
+	print_relevance_csv(efile.f, word, counts, MAX_YEARS);
+}
+
+void kleinberg_processor::compute_summary(const char *word)
+{
+	vector<size_t> hidden_states;
+
+	batch_viterbi(docs, relevant, hidden_states);
+
+	const size_t num_elems = min<size_t>(hidden_states.size(), MAX_YEARS);
+	for (size_t i = 0; i < num_elems; i++) {
+		int score = hidden_states[i];
+		if (score > 0)
+			print_summary_txt(efile.f, word, (unsigned int) i, score);
+	}
+}
+
+kleinberg_processor * kleinberg_processor::create(vector<unsigned int> &docs,
+	vector<unsigned int> &relevant, const char *filename)
+{
+	try {
+		return new kleinberg_processor(docs, relevant, filename);
+	} catch (file_exception &fe) {
+		return NULL;
+	}
 }

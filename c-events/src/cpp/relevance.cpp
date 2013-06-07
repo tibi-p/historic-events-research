@@ -5,6 +5,7 @@
 #include <cstring>
 #include "dictionary_reader.h"
 #include "dictionary_types.h"
+#include "generic_processor.h"
 #include "gaussian_finder.h"
 #include "gaussian_model.h"
 #include "kleinberg.h"
@@ -12,6 +13,7 @@
 #include "linear_model.h"
 #include "series.h"
 #include "util.h"
+#include "file.h"
 
 using namespace std;
 
@@ -121,138 +123,6 @@ void gaussian_model_series_to_csv(const char *word, const double *series, FILE *
 		append_csv(relevance_files[i], word, counts, MAX_YEARS);
 	}
 }
-
-#include <exception>
-
-class file_exception : public exception {
-
-public:
-
-	file_exception(const char *message) : message(message) { }
-
-	virtual const char * what() const throw ()
-	{
-		return message;
-	}
-
-private:
-	const char *message;
-
-};
-
-class excl_file {
-
-public:
-
-	excl_file(const char *filename)
-	{
-		if (file_exists(filename))
-			throw file_exception("excl_file: the file already exists");
-		f = fopen(filename, "wt");
-		if (f == NULL)
-			throw file_exception("excl_file: the file could not be opened");
-	}
-
-	~excl_file()
-	{
-		fclose(f);
-	}
-
-	FILE *f;
-
-};
-
-class generic_processor {
-
-public:
-
-	virtual ~generic_processor() { }
-
-	virtual void compute_relevance(const char *word) = 0;
-
-};
-
-class kleinberg_processor : public generic_processor {
-
-public:
-
-	kleinberg_processor(vector<unsigned int> &docs, vector<unsigned int> &relevant,
-		const char *filename) : docs(docs), relevant(relevant), efile(filename) { }
-
-	virtual ~kleinberg_processor() { }
-
-	virtual void compute_relevance(const char *word)
-	{
-		vector<size_t> hidden_states;
-		int counts[MAX_YEARS];
-
-		batch_viterbi(docs, relevant, hidden_states);
-
-		const size_t num_elems = min<size_t>(hidden_states.size(), MAX_YEARS);
-		for (size_t i = 0; i < num_elems; i++)
-			counts[i] = hidden_states[i];
-		fill(counts + num_elems, counts + MAX_YEARS, 0);
-
-		append_csv(efile.f, word, counts, MAX_YEARS);
-	}
-
-	static kleinberg_processor * create(vector<unsigned int> &docs,
-		vector<unsigned int> &relevant, const char *filename)
-	{
-		try {
-			return new kleinberg_processor(docs, relevant, filename);
-		} catch (file_exception &fe) {
-			return NULL;
-		}
-	}
-
-private:
-	vector<unsigned int> &docs;
-	vector<unsigned int> &relevant;
-	excl_file efile;
-
-};
-
-class numerical_discrepancy_processor : public generic_processor {
-
-public:
-
-	numerical_discrepancy_processor(double *series, const char *filename)
-		: series(series), efile(filename) { }
-
-	virtual ~numerical_discrepancy_processor() { }
-
-	virtual void compute_relevance(const char *word)
-	{
-		vector< pair< pair<size_t, size_t>, int > > intervals;
-		int counts[MAX_YEARS];
-
-		fit_discrepancy(series, 2, intervals);
-		memset(counts, 0, sizeof(counts));
-		for (size_t i = 0; i < intervals.size(); i++) {
-			pair<size_t, size_t> interval = intervals[i].first;
-			int score = 2 * intervals[i].second + 1;
-			for (size_t j = interval.first; j <= interval.second; j++)
-				counts[j] = score;
-		}
-
-		append_csv(efile.f, word, counts, MAX_YEARS);
-	}
-
-	static numerical_discrepancy_processor * create(double *series, const char *filename)
-	{
-		try {
-			return new numerical_discrepancy_processor(series, filename);
-		} catch (file_exception &fe) {
-			return NULL;
-		}
-	}
-
-private:
-	double *series;
-	excl_file efile;
-
-};
 
 template<class T>
 void maybe_add_pointer(vector<T *> &v, T *elem)
