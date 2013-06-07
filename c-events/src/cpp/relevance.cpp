@@ -7,6 +7,7 @@
 #include "dictionary_types.h"
 #include "gaussian_finder.h"
 #include "gaussian_model.h"
+#include "kleinberg.h"
 #include "numerical_discrepancy.h"
 #include "linear_model.h"
 #include "series.h"
@@ -121,27 +122,150 @@ void gaussian_model_series_to_csv(const char *word, const double *series, FILE *
 	}
 }
 
-void numerical_discrepancy_series_to_csv(const char *word, double *series, FILE *relevance_file)
-{
-	vector< pair< pair<size_t, size_t>, int > > intervals;
-	int counts[MAX_YEARS];
+#include <exception>
 
-	fit_discrepancy(series, 2, intervals);
-	memset(counts, 0, sizeof(counts));
-	for (size_t i = 0; i < intervals.size(); i++) {
-		pair<size_t, size_t> interval = intervals[i].first;
-		int score = 2 * intervals[i].second + 1;
-		for (size_t j = interval.first; j <= interval.second; j++)
-			counts[j] = score;
+class file_exception : public exception {
+
+public:
+
+	file_exception(const char *message) : message(message) { }
+
+	virtual const char * what() const throw ()
+	{
+		return message;
 	}
 
-	append_csv(relevance_file, word, counts, MAX_YEARS);
+private:
+	const char *message;
+
+};
+
+class excl_file {
+
+public:
+
+	excl_file(const char *filename)
+	{
+		if (file_exists(filename))
+			throw file_exception("excl_file: the file already exists");
+		f = fopen(filename, "wt");
+		if (f == NULL)
+			throw file_exception("excl_file: the file could not be opened");
+	}
+
+	~excl_file()
+	{
+		fclose(f);
+	}
+
+	FILE *f;
+
+};
+
+class generic_processor {
+
+public:
+
+	virtual ~generic_processor() { }
+
+	virtual void compute_relevance(const char *word) = 0;
+
+};
+
+class kleinberg_processor : public generic_processor {
+
+public:
+
+	kleinberg_processor(vector<unsigned int> &docs, vector<unsigned int> &relevant,
+		const char *filename) : docs(docs), relevant(relevant), efile(filename) { }
+
+	virtual ~kleinberg_processor() { }
+
+	virtual void compute_relevance(const char *word)
+	{
+		vector<size_t> hidden_states;
+		int counts[MAX_YEARS];
+
+		batch_viterbi(docs, relevant, hidden_states);
+
+		const size_t num_elems = min<size_t>(hidden_states.size(), MAX_YEARS);
+		for (size_t i = 0; i < num_elems; i++)
+			counts[i] = hidden_states[i];
+		fill(counts + num_elems, counts + MAX_YEARS, 0);
+
+		append_csv(efile.f, word, counts, MAX_YEARS);
+	}
+
+	static kleinberg_processor * create(vector<unsigned int> &docs,
+		vector<unsigned int> &relevant, const char *filename)
+	{
+		try {
+			return new kleinberg_processor(docs, relevant, filename);
+		} catch (file_exception &fe) {
+			return NULL;
+		}
+	}
+
+private:
+	vector<unsigned int> &docs;
+	vector<unsigned int> &relevant;
+	excl_file efile;
+
+};
+
+class numerical_discrepancy_processor : public generic_processor {
+
+public:
+
+	numerical_discrepancy_processor(double *series, const char *filename)
+		: series(series), efile(filename) { }
+
+	virtual ~numerical_discrepancy_processor() { }
+
+	virtual void compute_relevance(const char *word)
+	{
+		vector< pair< pair<size_t, size_t>, int > > intervals;
+		int counts[MAX_YEARS];
+
+		fit_discrepancy(series, 2, intervals);
+		memset(counts, 0, sizeof(counts));
+		for (size_t i = 0; i < intervals.size(); i++) {
+			pair<size_t, size_t> interval = intervals[i].first;
+			int score = 2 * intervals[i].second + 1;
+			for (size_t j = interval.first; j <= interval.second; j++)
+				counts[j] = score;
+		}
+
+		append_csv(efile.f, word, counts, MAX_YEARS);
+	}
+
+	static numerical_discrepancy_processor * create(double *series, const char *filename)
+	{
+		try {
+			return new numerical_discrepancy_processor(series, filename);
+		} catch (file_exception &fe) {
+			return NULL;
+		}
+	}
+
+private:
+	double *series;
+	excl_file efile;
+
+};
+
+template<class T>
+void maybe_add_pointer(vector<T *> &v, T *elem)
+{
+	if (elem != NULL)
+		v.push_back(elem);
 }
 
 int handle_entry(const struct dictionary_reader *dictreader, size_t index,
 	const gsl_multimin_fdfminimizer_type *T,
 	gsl_multimin_function_fdf regression_func,
-	double *smooth_series, FILE *relevance_files[])
+	double *smooth_series, const vector<unsigned int> &docs, vector<unsigned int> &relevant, FILE *relevance_files[],
+	vector<generic_processor *> processors)
 {
 	struct time_entry table[MAX_YEARS];
 	double series[MAX_YEARS];
@@ -154,18 +278,19 @@ int handle_entry(const struct dictionary_reader *dictreader, size_t index,
 	if (err == 0) {
 		table_to_series(dictreader, table, table_size, series);
 		smoothify_series(series, smooth_series, MAX_YEARS, smoothing_window);
+		table_to_volume_counts(table, table_size, &relevant[0]);
 
 		word = dictreader->words[index];
 		if (relevance_files[0] != NULL)
 			double_change_series_to_csv(word, smooth_series, relevance_files[0]);
 		if (relevance_files[1] != NULL)
 			linear_model_series_to_csv(word, T, &regression_func, relevance_files[1]);
-		if (relevance_files[2] != NULL)
-			numerical_discrepancy_series_to_csv(word, smooth_series, relevance_files[2]);
-		if (relevance_files[3] != NULL || relevance_files[4] != NULL ||
-				relevance_files[5] != NULL || relevance_files[6] != NULL) {
-			gaussian_model_series_to_csv(word, smooth_series, &relevance_files[3]);
+		if (relevance_files[2] != NULL || relevance_files[3] != NULL ||
+				relevance_files[4] != NULL || relevance_files[5] != NULL) {
+			gaussian_model_series_to_csv(word, smooth_series, &relevance_files[2]);
 		}
+		for (vector<generic_processor *>::const_iterator it = processors.begin(); it != processors.end(); ++it)
+			(*it)->compute_relevance(word);
 	}
 	return err;
 }
@@ -175,6 +300,14 @@ int string_compare(const void *a, const void *b)
 	const char **x = (const char **) a;
 	const char **y = (const char **) b;
 	return strcmp(*x, *y);
+}
+
+uint32_t compute_max_num_docs(const struct dictionary_reader *dictreader)
+{
+	uint32_t max_num_docs = 0;
+	for (int i = 0; i < MAX_YEARS; i++)
+		max_num_docs = max(max_num_docs, dictreader->frequencies[i].volume_count);
+	return max_num_docs;
 }
 
 int main()
@@ -221,13 +354,15 @@ int main()
 	const char *filenames[] = {
 		"data/relevance/double_change.csv",
 		"data/relevance/linear_model.csv",
-		"data/relevance/numerical_discrepancy.csv",
 		"data/relevance/s1_gaussian.csv",
 		"data/relevance/s2_gaussian.csv",
 		"data/relevance/s3_gaussian.csv",
 		"data/relevance/sinf_gaussian.csv",
 	};
 	FILE *relevance_files[sizeof(filenames) / sizeof(*filenames)];
+	vector<unsigned int> docs;
+	vector<unsigned int> relevant(MAX_YEARS);
+	vector<generic_processor *> processors;
 
 	T = gsl_multimin_fdfminimizer_conjugate_pr;
 
@@ -241,6 +376,9 @@ int main()
 	if (err != 0)
 		goto out;
 
+	maybe_add_pointer<generic_processor>(processors, numerical_discrepancy_processor::create(smooth_series, "data/relevance/numerical_discrepancy.csv"));
+	maybe_add_pointer<generic_processor>(processors, kleinberg_processor::create(docs, relevant, "data/relevance/kleinberg.csv"));
+
 	memset(relevance_files, 0, sizeof(relevance_files));
 	for (size_t i = 0; i < sizeof(filenames) / sizeof(*filenames); i++) {
 		if (!file_exists(filenames[i])) {
@@ -250,7 +388,11 @@ int main()
 		}
 	}
 
+	for (int i = 0; i < MAX_YEARS; i++)
+		docs.push_back(dict.frequencies[i].volume_count);
+
 	init_partial_sums();
+	init_ln_sums(compute_max_num_docs(&dict));
 	memset(smooth_series, 0, sizeof(smooth_series));
 
 #if 0
@@ -260,7 +402,7 @@ int main()
 		if (p != NULL) {
 			char **marker = (char **) p;
 			ptrdiff_t index = marker - dict.words;
-			err = handle_entry(&dict, (size_t) index, T, regression_func, smooth_series);
+			err = handle_entry(&dict, (size_t) index, T, regression_func, smooth_series, docs, relevant, relevance_files, processors);
 			if (err != 0)
 				goto out_files;
 		}
@@ -273,7 +415,7 @@ int main()
 			if (percent % 4 == 0)
 				printf("%u%% done\n", (unsigned int) percent);
 		}
-		err = handle_entry(&dict, i, T, regression_func, smooth_series, relevance_files);
+		err = handle_entry(&dict, i, T, regression_func, smooth_series, docs, relevant, relevance_files, processors);
 		if (err != 0)
 			goto out_files;
 	}

@@ -140,6 +140,26 @@ void table_to_series(const struct dictionary_reader *dictreader,
 	}
 }
 
+void table_to_volume_counts(const struct time_entry *table,
+	size_t table_size, unsigned int *counts)
+{
+	const struct time_entry *entry;
+	size_t j;
+	int pos;
+
+	memset(counts, 0, MAX_YEARS * sizeof(*counts));
+	for (j = 0; j < table_size; j++) {
+		entry = &table[j];
+		if (entry->year < MIN_YEAR || entry->year >= MIN_YEAR + MAX_YEARS) {
+			fprintf(stderr, "The %luth entry has an invalid year: %u\n",
+				(unsigned long) j, (unsigned int) entry->year);
+			exit(EXIT_FAILURE);
+		}
+		pos = entry->year - MIN_YEAR;
+		counts[pos] = entry->volume_count;
+	}
+}
+
 int is_in_word_bounds(const struct dictionary_reader *dict,
 	uint32_t word_offset, uint32_t word_length)
 {

@@ -36,6 +36,9 @@ void table_to_series(const struct dictionary_reader *dictreader,
 	const struct time_entry *table, size_t table_size,
 	double *series);
 
+void table_to_volume_counts(const struct time_entry *table,
+	size_t table_size, unsigned int *counts);
+
 int is_in_word_bounds(const struct dictionary_reader *dict,
 	uint32_t word_offset, uint32_t word_length);
 
