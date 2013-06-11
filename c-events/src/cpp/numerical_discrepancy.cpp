@@ -1,6 +1,7 @@
 #include "numerical_discrepancy.h"
 #include <algorithm>
 #include <vector>
+#include <cmath>
 #include <cstdlib>
 #include <cstring>
 #include "dictionary_reader.h"
@@ -13,18 +14,22 @@ pair<size_t, size_t> add_to_pair(pair<size_t, size_t> p, size_t offset)
 }
 
 void append_indices(const vector< pair<size_t, size_t> > &indices,
-	vector< pair< pair<size_t, size_t>, int > > &intervals,
-	size_t offset, int level)
+	vector< pair< pair<size_t, size_t>, double > > &intervals,
+	size_t offset, const vector<double> &sums, size_t s_off)
 {
-	for (size_t i = 0; i < indices.size(); i++)
-		intervals.push_back(make_pair(add_to_pair(indices[i], offset), level));
+	for (size_t i = 0; i < indices.size(); i++) {
+		pair<size_t, size_t> interval = add_to_pair(indices[i], offset);
+		double score = sums[interval.second + 1 - s_off] -
+			sums[interval.first - s_off];
+		intervals.push_back(make_pair(interval, score));
+	}
 }
 
 template<class T>
-void compute_max_sequences(const T *v, size_t n, vector< pair<size_t, size_t> > &indices)
+void compute_max_sequences(const T *v, size_t n, vector<T> &sums,
+	vector< pair<size_t, size_t> > &indices)
 {
 	vector<size_t> back_ptr;
-	vector<T> sums;
 
 	sums.push_back((T) 0);
 	for (size_t i = 0; i < n; i++)
@@ -75,7 +80,8 @@ void compute_max_sequences(const T *v, size_t n, vector< pair<size_t, size_t> > 
 #endif
 }
 
-void analyze_burstiness(const double *series, size_t num_elems, vector< pair<size_t, size_t> > &indices)
+void analyze_burstiness(const double *series, size_t num_elems,
+	vector<double> &bursty_sums, vector< pair<size_t, size_t> > &indices)
 {
 	double burstiness[MAX_YEARS];
 	double sum = 0.0;
@@ -86,34 +92,47 @@ void analyze_burstiness(const double *series, size_t num_elems, vector< pair<siz
 	for (size_t i = 0; i < num_elems; i++)
 		burstiness[i] = series[i] / sum - 1. / num_elems;
 
-	compute_max_sequences(burstiness, num_elems, indices);
+	bursty_sums.clear();
+	compute_max_sequences(burstiness, num_elems, bursty_sums, indices);
 }
 
 void fit_discrepancy(const double *series, unsigned int smoothing_window,
-	vector< pair< pair<size_t, size_t>, int > > &intervals)
+	vector< pair< pair<size_t, size_t>, double > > &intervals)
 {
 	vector< pair<size_t, size_t> > indices;
+	vector<double> sums, lesser_sums;
 
 	size_t inf = smoothing_window;
 	size_t sup = MAX_YEARS - smoothing_window;
-	analyze_burstiness(series + inf, sup - inf, indices);
-	append_indices(indices, intervals, inf, 0);
+	analyze_burstiness(series + inf, sup - inf, sums, indices);
+	append_indices(indices, intervals, inf, sums, inf);
 
 	for (size_t i = 0; i < intervals.size();) {
 		size_t diff = intervals[i].first.second - intervals[i].first.first + 1;
 		if (diff >= 32) {
-			inf = intervals[i].first.first;
-			int level = intervals[i].second;
+			size_t sub_inf = intervals[i].first.first;
 			intervals[i] = intervals.back();
 			intervals.pop_back();
 
 			indices.clear();
-			analyze_burstiness(series + inf, diff, indices);
-			append_indices(indices, intervals, inf, level + 1);
+			analyze_burstiness(series + sub_inf, diff, lesser_sums, indices);
+			append_indices(indices, intervals, sub_inf, sums, inf);
 		} else {
 			i++;
 		}
 	}
+}
+
+int compute_discrepancy_score(pair<size_t, size_t> interval, double burstiness)
+{
+	size_t dist = interval.second - interval.first + 1;
+	double mean = burstiness / dist;
+	double base = log(mean);
+	base = (base + 6.0) * 10.0 / 6.0;
+	if (base >= 0)
+		return 1 + (int) base;
+	else
+		return 0;
 }
 
 numerical_discrepancy_processor::numerical_discrepancy_processor(double *series, const char *filename)
@@ -123,16 +142,18 @@ numerical_discrepancy_processor::~numerical_discrepancy_processor() { }
 
 void numerical_discrepancy_processor::compute_relevance(const char *word)
 {
-	vector< pair< pair<size_t, size_t>, int > > intervals;
+	vector< pair< pair<size_t, size_t>, double > > intervals;
 	int counts[MAX_YEARS];
 
 	fit_discrepancy(series, 2, intervals);
 	memset(counts, 0, sizeof(counts));
 	for (size_t i = 0; i < intervals.size(); i++) {
 		pair<size_t, size_t> interval = intervals[i].first;
-		int score = 2 * intervals[i].second + 1;
-		for (size_t j = interval.first; j <= interval.second; j++)
-			counts[j] = score;
+		int score = compute_discrepancy_score(interval, intervals[i].second);
+		if (score > 0) {
+			for (size_t j = interval.first; j <= interval.second; j++)
+				counts[j] = score;
+		}
 	}
 
 	print_relevance_csv(efile.f, word, counts, MAX_YEARS);
@@ -140,15 +161,17 @@ void numerical_discrepancy_processor::compute_relevance(const char *word)
 
 void numerical_discrepancy_processor::compute_summary(const char *word)
 {
-	vector< pair< pair<size_t, size_t>, int > > intervals;
+	vector< pair< pair<size_t, size_t>, double > > intervals;
 
 	fit_discrepancy(series, 2, intervals);
 	sort(intervals.begin(), intervals.end());
 	for (size_t i = 0; i < intervals.size(); i++) {
 		pair<size_t, size_t> interval = intervals[i].first;
-		int score = intervals[i].second / 2 + 1;
-		for (size_t j = interval.first; j <= interval.second; j++)
-			print_summary_txt(efile.f, word, (unsigned int) j, score);
+		int score = compute_discrepancy_score(interval, intervals[i].second);
+		if (score > 0) {
+			for (size_t j = interval.first; j <= interval.second; j++)
+				print_summary_txt(efile.f, word, (unsigned int) j, score);
+		}
 	}
 }
 

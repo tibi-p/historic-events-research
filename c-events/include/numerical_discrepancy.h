@@ -7,7 +7,7 @@
 #include "generic_processor.h"
 
 void fit_discrepancy(const double *series, unsigned int smoothing_window,
-	std::vector< std::pair< std::pair<size_t, size_t>, int > > &intervals);
+	std::vector< std::pair< std::pair<size_t, size_t>, double > > &intervals);
 
 class numerical_discrepancy_processor : public generic_processor {
 

@@ -8,6 +8,7 @@
 #include "dictionary_types.h"
 #include "gaussian_finder.h"
 #include "gaussian_model.h"
+#include "kleinberg.h"
 #include "numerical_discrepancy.h"
 #include "linear_model.h"
 #include "series.h"
@@ -63,19 +64,6 @@ void process_series_linear_model(const char *word,
 	}
 }
 
-void print_series(const double *series)
-{
-	printf("c(");
-	for (size_t j = 0; j < MAX_YEARS; j++) {
-		if (j % 5 == 0)
-			printf("\n\t");
-		printf("%lf,", series[j]);
-		if ((j + 1) % 5 != 0)
-			printf(" ");
-	}
-	printf(")\n");
-}
-
 void fit_gaussians(const char *word, const double *series, size_t inf, size_t sup,
 	double widening, FILE *zeitgeist)
 {
@@ -91,18 +79,12 @@ void fit_gaussians(const char *word, const double *series, size_t inf, size_t su
 	}
 }
 
-void process_series_numerical_discrepancy(const char *word, double *series, FILE *zeitgeist)
+uint32_t compute_max_num_docs(const struct dictionary_reader *dictreader)
 {
-	vector< pair< pair<size_t, size_t>, int > > intervals;
-
-	fit_discrepancy(series, 2, intervals);
-	sort(intervals.begin(), intervals.end());
-	for (size_t i = 0; i < intervals.size(); i++) {
-		pair<size_t, size_t> interval = intervals[i].first;
-		int score = 2 * intervals[i].second + 1;
-		for (size_t j = interval.first; j <= interval.second; j++)
-			fprintf(zeitgeist, "%s\t%u\t%d\n", word, (unsigned int) j, score);
-	}
+	uint32_t max_num_docs = 0;
+	for (int i = 0; i < MAX_YEARS; i++)
+		max_num_docs = max(max_num_docs, dictreader->frequencies[i].volume_count);
+	return max_num_docs;
 }
 
 int main()
@@ -110,7 +92,6 @@ int main()
 	const char *summary_filenames[] = {
 		"data/zeitgeist/summary/double_change_summary.txt",
 		"data/zeitgeist/summary/linear_model_summary.txt",
-		"data/zeitgeist/summary/numerical_discrepancy_summary.txt",
 		"data/zeitgeist/summary/s1_gaussian_summary.txt",
 		"data/zeitgeist/summary/s2_gaussian_summary.txt",
 		"data/zeitgeist/summary/s3_gaussian_summary.txt",
@@ -120,6 +101,9 @@ int main()
 		1.0, 2.0, 3.0, numeric_limits<double>::max()
 	};
 	FILE *zeitgeists[sizeof(summary_filenames) / sizeof(*summary_filenames)];
+	vector<generic_processor *> processors;
+	vector<unsigned int> docs;
+	vector<unsigned int> relevant(MAX_YEARS);
 
 	const gsl_multimin_fdfminimizer_type *T;
 	gsl_multimin_function_fdf regression_func;
@@ -152,6 +136,13 @@ int main()
 	if (err != 0)
 		goto out;
 
+	maybe_add_pointer<generic_processor>(processors, numerical_discrepancy_processor::create(smooth_series, "data/zeitgeist/summary/numerical_discrepancy_summary.txt"));
+	maybe_add_pointer<generic_processor>(processors, kleinberg_processor::create(docs, relevant, "data/zeitgeist/summary/kleinberg_summary.txt"));
+
+	for (int i = 0; i < MAX_YEARS; i++)
+		docs.push_back(dict.frequencies[i].volume_count);
+
+	memset(zeitgeists, 0, sizeof(zeitgeists));
 	for (size_t i = 0; i < sizeof(zeitgeists) / sizeof(*zeitgeists); i++) {
 		if (!file_exists(summary_filenames[i])) {
 			zeitgeists[i] = fopen(summary_filenames[i], "wt");
@@ -161,6 +152,7 @@ int main()
 	}
 
 	init_partial_sums();
+	init_ln_sums(compute_max_num_docs(&dict));
 	memset(smooth_series, 0, sizeof(smooth_series));
 
 	for (size_t i = 0; i < dict.num_words; i++) {
@@ -181,22 +173,23 @@ int main()
 
 		table_to_series(&dict, table, num_read, series);
 		smoothify_series(series, smooth_series, MAX_YEARS, smoothing_window);
-#if 0
-		if (strcmp(words[i], "plague") == 0)
-			print_series(smooth_series);
-#endif
+		table_to_volume_counts(table, num_read, &relevant[0]);
+
 		if (zeitgeists[0] != NULL)
 			process_series_double_change(word, smooth_series, zeitgeists[0]);
 		if (zeitgeists[1] != NULL)
 			process_series_linear_model(word, T, &regression_func, zeitgeists[1]);
-		if (zeitgeists[2] != NULL)
-			process_series_numerical_discrepancy(word, smooth_series, zeitgeists[2]);
 		for (size_t j = 0; j < sizeof(parameters) / sizeof(*parameters); j++)
-			if (zeitgeists[j + 3] != NULL) {
+			if (zeitgeists[j + 2] != NULL) {
 				fit_gaussians(word, smooth_series, smoothing_window,
-					MAX_YEARS - smoothing_window, parameters[j], zeitgeists[j + 3]);
+					MAX_YEARS - smoothing_window, parameters[j], zeitgeists[j + 2]);
 			}
+		for (vector<generic_processor *>::const_iterator it = processors.begin(); it != processors.end(); ++it)
+			(*it)->compute_summary(word);
 	}
+
+	for (vector<generic_processor *>::iterator it = processors.begin(); it != processors.end(); ++it)
+		delete *it;
 
 out_reader:
 	destroy_dictreader(&dict);

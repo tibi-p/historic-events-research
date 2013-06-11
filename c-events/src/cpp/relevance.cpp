@@ -124,13 +124,6 @@ void gaussian_model_series_to_csv(const char *word, const double *series, FILE *
 	}
 }
 
-template<class T>
-void maybe_add_pointer(vector<T *> &v, T *elem)
-{
-	if (elem != NULL)
-		v.push_back(elem);
-}
-
 int handle_entry(const struct dictionary_reader *dictreader, size_t index,
 	const gsl_multimin_fdfminimizer_type *T,
 	gsl_multimin_function_fdf regression_func,
@@ -290,6 +283,9 @@ int main()
 			goto out_files;
 	}
 #endif
+
+	for (vector<generic_processor *>::iterator it = processors.begin(); it != processors.end(); ++it)
+		delete *it;
 
 out_files:
 	for (size_t i = 0; i < sizeof(relevance_files) / sizeof(*relevance_files); i++) {
