@@ -38,6 +38,8 @@
 % all the chapters with 1.5 line spacing
 \usepackage{setspace}
 
+\usepackage{float}
+
 % hyper-references
 % http://www.tug.org/applications/hyperref/manual.html
 \usepackage{hyperref}
@@ -60,6 +62,12 @@
 % Support for including graphics
 \usepackage{graphicx}
 \DeclareGraphicsExtensions{.pdf,.png,.jpg}
+\graphicspath{ {./src/img/} }
+
+\usepackage[export]{adjustbox}
+
+\usepackage{algorithm}
+\usepackage{algpseudocode}
 
 % Code listings support
 \usepackage{listings}
@@ -157,7 +165,8 @@
 
 \newenvironment{frontmatter}{\pagenumbering{roman}}{\newpage \pagenumbering{arabic}}
 
-\renewenvironment{abstract}{\null\vfil\prefacesection{Abstract}}{\par\vfill\null}
+%\renewenvironment{abstract}{\null\vfil\prefacesection{Abstract}}{\par\vfill\null}
+\renewenvironment{abstract}{\prefacesection{Abstract}}{}
 
 \def\prefacesection#1{%
 	\chapter*{#1}
@@ -175,9 +184,9 @@
 \def\notitlesection#1{%
     \addcontentsline{toc}{chapter}{#1}}
 
-\newenvironment{acknowledgements} {
-    \notitlesection{Acknowledgements}
-    \thispagestyle{empty} }
+%\newenvironment{acknowledgements} {
+%    \notitlesection{Acknowledgements}
+%    \thispagestyle{empty} }
 {\pagestyle{fancy}}
 
 \newcommand{\includechapter}[1]{\input{src/chapter-#1/index}}

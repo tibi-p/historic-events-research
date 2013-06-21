@@ -1,57 +1,36 @@
 \chapter{Introduction}
 \label{chapter:intro}
 
-\textbf{This is just a demo file. It should not be used as a sample for a thesis.}\\
-\todo{Remove this line (this is a TODO)}
+\section{Motivation}
+\label{sec:motivation}
 
-\section{Project Description}
-\label{sec:proj}
+Traditionally, historic events have been analyzed from the perspective of carefully selected texts, deemed historically significant. This has allowed historians to paint accurate descriptions of important events in our history, from a variety of perspectives: the underlying motives and actions that lead to a particular event, the narrative of the event (as a sequence of minor events) and the influence that said event has had on humans and their culture. In recent times, the sources for historians have diversified due to advancements in technology, but written texts still remain invaluable for this task.
 
-\subsection{Project Scope}
-\label{sub-sec:proj-scope}
+However, as proven by the recent advent of the field of culturomics, introduced in \cite{Michel14012011}, there is much to be learned by analyzing the large collections of books available in electronic form. More specifically, by seeking patterns in the time series of the frequency of a given word as a function of the year, it is possible to make clever observations in fields such as linguistics (grammar evolution), but also in areas pertaining to social sciences, such as collective memory, adoption of technology and censorship.
 
-This thesis presents the \textbf{\project}.
+\section{Objectives}
+\label{sec:objectives}
 
-This is an example of a footnote \footnote{\url{www.google.com}}. You can see here a reference to \labelindexref{Section}{sub-sec:proj-objectives}.
+In this paper I aim to delve deeper into the implications of the culturomics approach to the analysis of historic events. Thus, the purpose is to devise a model that can be used for the identification of important events in texts, by using quantitative data collected from millions of books instead of relying on understanding a few select texts.
 
-Here we have defined the CS abbreviation.\abbrev{CS}{Computer Science} and the UPB abbreviation.\abbrev{UPB}{University Politehnica of Bucharest}
+Expanding on this main goal, one can identify several sub-problems. Firstly, any solution to the proposed problem must start with how a historic event is represented in the context of a large collections of texts. The representation chosen here is that of a set of words related to a given historic event. For example, keywords for World War II might include Hitler, Nazism, battlefield or atomic, while keywords for the African-American Civil Rights Movement might include blacks and slavery.
 
-The main scope of this project is to qualify xLuna for use in critical systems.
+Secondly, as a consequence of the above definition, one can start by solving a seemingly simpler problem. More precisely, given a singular feature (the frequency time series of a given word), there should be a method of determining in what periods of time has the feature influenced the course of history. This is commonly referred to as bursty feature detection and has been applied on a much smaller historical scale in papers such as \cite{Kleinberg:2002:BHS:775047.775061}. The aim here is to evaluate how current algorithms fare with the research topic of this thesis and to propose new algorithms that might be better suited to the task.
 
+Lastly, one must reverse the process of breaking a historic event into each of its keywords. One of the main challenges regarding this reversal is the lack of direct access to the contents of the books, instead having to rely only on the frequency time series. Overall, the focus shall be on making topic modeling work on this task, even in the presence of the aforementioned adversity.
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean aliquam lectus vel orci malesuada accumsan. Sed lacinia egestas tortor, eget tristiqu dolor congue sit amet. Curabitur ut nisl a nisi consequat mollis sit amet quis nisl. Vestibulum hendrerit velit at odio sodales pretium. Nam quis tortor sed ante varius sodales. Etiam lacus arcu, placerat sed laoreet a, facilisis sed nunc. Nam gravida fringilla ligula, eu congue lorem feugiat eu.
+\section{Outline}
+\label{sec:outline}
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean aliquam lectus vel orci malesuada accumsan. Sed lacinia egestas tortor, eget tristiqu dolor congue sit amet. Curabitur ut nisl a nisi consequat mollis sit amet quis nisl. Vestibulum hendrerit velit at odio sodales pretium. Nam quis tortor sed ante varius sodales. Etiam lacus arcu, placerat sed laoreet a, facilisis sed nunc. Nam gravida fringilla ligula, eu congue lorem feugiat eu.
+The rest of the thesis is structured as follows: \labelindexref{Chapter}{chapter:relatedwork} focuses on previous work related to our research objectives. The main talking point shall be the Google Books Ngram Corpus and the way it can be used to introduce quantitative analysis into the world of social sciences. Furthermore, topic modeling will be put under investigation as a means for identifying trends and events. However, previous work focuses on history of a much smaller scale, such as the evolution of semantics (word meanings), and the intent is to make the approach work on the grand scale of human history.
 
+\labelindexref{Chapter}{chapter:hist-ev-model} describes the framework that shall be used for identifying historic events from the Google Books Ngram Corpus. This historic events model has two main components. Firstly, one has to identify the most descriptive features for each year, in other words a measure for the historical relevance of an n-gram is needed. The problem is known in the literature as bursty feature detection. Its presentation shall include both well-established algorithms (together with any modifications that were necessary for the present research) and new ones, developed specifically for the task at hand. Secondly, the data obtained in the previous step needs to be processed in order to be amenable to topic modeling. Furthermore, the algorithm used for the latter task, Latent Dirichlet Allocation, shall be briefly described.
 
-\subsection{Project Objectives}
-\label{sub-sec:proj-objectives}
+\labelindexref{Chapter}{chapter:implementation} addresses the implementation of the proposed historic events model, which has two aspects to it. First of all, there is the issue of the format of the data used. The Google Ngram Books Corpus uses a simple text format (comma-separated values), but for reasons of efficiency it has been transformed to an adhoc binary format. Secondly, the software modules comprising the project are described, focusing on information such as programming languages used and whether an external tool was needed.
 
-We have now included \labelindexref{Figure}{img:report-framework}.
+The actual results will be discussed in \labelindexref{Chapter}{chapter:results}. Firstly, a sample of topics obtained with the historic events model shall be presented to get a proof of the adequacy of the proposed method. Secondly, the subsequent analysis shall focus on several important historic events and shall require a comparison between the different algorithms to see which of them successfully detected a given event.
 
-\fig[scale=0.5]{src/img/reporting-framework.pdf}{img:report-framework}{Reporting Framework}
-
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean aliquam lectus vel orci malesuada accumsan. Sed lacinia egestas tortor, eget tristiqu dolor congue sit amet. Curabitur ut nisl a nisi consequat mollis sit amet quis nisl. Vestibulum hendrerit velit at odio sodales pretium. Nam quis tortor sed ante varius sodales. Etiam lacus arcu, placerat sed laoreet a, facilisis sed nunc. Nam gravida fringilla ligula, eu congue lorem feugiat eu.
-
-We can also have citations like \cite{iso-odf}.
-
-\subsection{Related Work}
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean aliquam lectus vel orci malesuada accumsan. Sed lacinia egestas tortor, eget tristiqu dolor congue sit amet. Curabitur ut nisl a nisi consequat mollis sit amet quis nisl. Vestibulum hendrerit velit at odio sodales pretium. Nam quis tortor sed ante varius sodales. Etiam lacus arcu, placerat sed laoreet a, facilisis sed nunc. Nam gravida fringilla ligula, eu congue lorem feugiat eu.
-
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean aliquam lectus vel orci malesuada accumsan. Sed lacinia egestas tortor, eget tristiqu dolor congue sit amet. Curabitur ut nisl a nisi consequat mollis sit amet quis nisl. Vestibulum hendrerit velit at odio sodales pretium. Nam quis tortor sed ante varius sodales. Etiam lacus arcu, placerat sed laoreet a, facilisis sed nunc. Nam gravida fringilla ligula, eu congue lorem feugiat eu.
-
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean aliquam lectus vel orci malesuada accumsan. Sed lacinia egestas tortor, eget tristiqu dolor congue sit amet. Curabitur ut nisl a nisi consequat mollis sit amet quis nisl. Vestibulum hendrerit velit at odio sodales pretium. Nam quis tortor sed ante varius sodales. Etiam lacus arcu, placerat sed laoreet a, facilisis sed nunc. Nam gravida fringilla ligula, eu congue lorem feugiat eu.
-
-We are now discussing the \textbf{Ultimate answer to all knowledge}.
-This line is particularly important it also adds an index entry for \textit{Ultimate answer to all knowledge}.\index{Ultimate answer to all knowledge}
-
-\subsection{Demo listings}
-
-We can also include listings like the following:
+Finally, the thesis concludes with \labelindexref{Chapter}{chapter:conclusion}. It summarizes all of the present work, also aiming to draw relevant conclusions on the performance of the proposed algorithms. Furthermore, some directions that may be considered in future work are suggested.
 
 % Inline Listing example
 \lstset{language=make,caption=Application Makefile,label=lst:app-make}
@@ -61,24 +40,4 @@ SRC_DIR =..
 include $(SRC_DIR)/config/application.cfg
 \end{lstlisting}
 
-Listings can also be referenced. References don't have to include chapter/table/figure numbers... so we can have hyperlinks \labelref{like this}{lst:makefile-test}.
-
-\subsection{Tables}
-
-We can also have tables... like \labelindexref{Table}{table:reports}.
-
-\begin{center}
-\begin{table}[htb]
-  \caption{Generated reports - associated Makefile targets and scripts}
-  \begin{tabular}{l*{6}{c}r}
-    Generated report & Makefile target & Script \\
-    \hline
-    Full Test Specification & full_spec & generate_all_spec.py  \\
-    Test Report & test_report & generate_report.py  \\
-    Requirements Coverage & requirements_coverage &
-    generate_requirements_coverage.py   \\
-    API Coverage & api_coverage & generate_api_coverage.py  \\
-  \end{tabular}
-  \label{table:reports}
-\end{table}
-\end{center}
+Listings can also \todo{be referenced}... so we can have hyperlinks \labelref{like this}{lst:makefile-test}.

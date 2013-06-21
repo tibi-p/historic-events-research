@@ -1,0 +1,65 @@
+\chapter{Results}
+\label{chapter:results}
+
+Topic models specify a mixture of topics that generates each historically relevant document, thus relating each year with an underlying distribution of topics. By browsing over the topic files obtained using the Stanford Topic Modeling Toolbox, one can notice that only very rarely is a year associated with a topic mixture in which there is no single dominant topic. Thus, only the most likely topic for each year shall be considered henceforth.
+
+\begin{figure}
+\centering
+\includegraphics[max size={\textwidth}{\textheight}]{civil-war-related-series}
+\caption{Ngram time series related to the American Civil War}
+\label{fig:civil-war-related-series}
+\end{figure}
+
+Though seemingly the weakest model, the double change algorithm has generated some of the most accurate topics for certain periods of time. For example, the topic for the years $1858$ to $1864$ and $1867$ to $1868$ is composed of the following main words: rebel, confederate, wolff, mcclellan, schleswig, secession, ich, vicksburg, rebels, chattanooga, die, sherman, doge, nicht, wedgwood, holstein, longstreet, gen, flax and der. A lot of these words relate directly to the American Civil War, providing a high degree of confidence that the model has successfully detected this important event in history. A graph comparing the time series of some of the words relating to the American Civil War is shown in \autoref{fig:civil-war-related-series}.
+
+\begin{figure}
+\centering
+\includegraphics[max size={\textwidth}{\textheight}]{pre-ww2-related-series}
+\caption{Ngram time series related to the pre World War II period}
+\label{fig:pre-ww2-related-series}
+\end{figure}
+
+For the linear model peak detection, I will consider the time period from $1932$ to $1936$, filled with events that foreshadowed World War II. The detected topic consists of fascist, adjustment, federal, depression, rubber, communism, collective, pact, medieval, vitamin, broadcasting, reconstruction, alpha, recovery, radio, employers, socialism, communists, tomorrow and manchuria. Unlike the case of the American Civil War, there is no underlying important event that could cause the topic to converge. Nonetheless, the selected words, the most relevant of which are shown in \autoref{fig:pre-ww2-related-series}, do a good job of painting an accurate image of that period.
+
+\begin{figure}
+\centering
+\includegraphics[max size={\textwidth}{\textheight}]{ww1-related-series}
+\caption{Ngram time series related to World War I}
+\label{fig:ww1-related-series}
+\end{figure}
+
+For the last model, Gaussian model peak detection, the interval between $1916$ and $1920$ shall be used, a rough approximation of World War I. Upon training Latent Dirichlet Allocation, the following topic is obtained:artillery, target, syndrome, nationalism, naval, democracy, alcohol, battalion, pan, rehabilitation, defense, dad, von, aircraft, navy, strategic, austria, damping, mobilize and firing. The words pertaining to World War I are shown together in \autoref{fig:ww1-related-series}, scaled such that they are comparable in size.
+
+\begin{table}[h]
+\begin{center}
+\begin{tabular}{lc}
+\toprule
+\bf Year interval & \bf Topic words \\
+\midrule
+1899-1905 & electron, colonialism, \\
+	& industrialization \\
+1906-1912 & socialism, communism, korean \\
+1913-1921 & nationalism, artillery, \\
+	& democracy, rehabilitation, naval \\
+	& aircraft, hungary \\
+1922-1928 & petroleum, overseas, \\
+	& gravitation, lagos \\
+1929-1935 & television, cinema, \\
+	& capitalism, airport \\
+1936-1941 & semiconductor, ethiopian, \\
+	& thermodynamic \\
+1942-1948 & aircraft, liberation, \\
+	& victory, electronics \\
+1949-1955 & spatial, seoul, charter \\
+1956-1968 & rocket, disarmament, tibet \\
+1969-1981 & pollution, nixon, slavery, \\
+	& blacks, urbanization \\
+1982-2007 & privatization, nicaragua, \\
+	& ibm, nato, nuclear \\
+\bottomrule
+\end{tabular}
+\end{center}
+\caption{\label{tbl:topic-evolution} Evolution of topics over the last century. }
+\end{table}
+
+However, many of the words present in these topics convey little information about a historic event, creating a significant amount of noise. Currently, their removal is done manually, but automating this task will most likely become the target of future research. An example of historic topics, describing the last century, can be seen in \autoref{tbl:topic-evolution} (obtained using the Gaussian model with a widening parameter $w = 2$).
