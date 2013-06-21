@@ -67,7 +67,7 @@
             focusTarget: 'category',
             legend: { position: 'top' },
             tooltip: { isHtml: true },
-            hAxis: { format: '####', gridlines: { count: 1 } },
+            hAxis: { format: '####', gridlines: { count: -1 } },
             vAxis: {
                 format: '0.00########%',
                 gridlines: { count: 6 },
@@ -84,7 +84,7 @@
     }
 
     // Load the Visualization API.
-    google.load('visualization', '1', {'packages':['corechart']});
+    google.load('visualization', '1.1', {'packages':['corechart']});
 
     // Set a callback to run when the Google Visualization API is loaded.
     google.setOnLoadCallback(drawChart);
@@ -189,6 +189,10 @@
                 Gaussian Model with widening 3 <br>
             <input type="checkbox" name="model_type" value="sinf_gaussian" checked>
                 Gaussian Model with widening &infin; <br>
+            <input type="checkbox" name="model_type" value="kleinberg" checked>
+                Kleinberg's Weighted Automaton <br>
+            <input type="checkbox" name="model_type" value="numerical_discrepancy" checked>
+                Numerical Discrepancy <br>
         </div>
 
         <input type="hidden" name="share" value="" >
