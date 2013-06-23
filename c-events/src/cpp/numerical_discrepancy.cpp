@@ -125,14 +125,15 @@ void fit_discrepancy(const double *series, unsigned int smoothing_window,
 
 int compute_discrepancy_score(pair<size_t, size_t> interval, double burstiness)
 {
-	size_t dist = interval.second - interval.first + 1;
-	double mean = burstiness / dist;
-	double base = log(mean);
-	base = (base + 6.0) * 10.0 / 6.0;
-	if (base >= 0)
-		return 1 + (int) base;
-	else
-		return 0;
+	const int thresholds[] = {
+		1574, 1752, 1817, 1860, 1894, 1924, 1950, 1974, 2005, 2038,
+	};
+	size_t i;
+	int base = (int) (100 * log(burstiness) + 2076);
+	for (i = 0; i < sizeof(thresholds) / sizeof(*thresholds); i++)
+		if (base < thresholds[i])
+			break;
+	return (int) i;
 }
 
 numerical_discrepancy_processor::numerical_discrepancy_processor(double *series, const char *filename)
