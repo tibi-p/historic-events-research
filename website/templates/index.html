@@ -41,7 +41,7 @@
         $('#submit-query').trigger('click');
     }
 
-    function drawAjaxChart(words, all_series) {
+    function drawAjaxChart(words, all_series, show_series) {
         // Create the data table.
         var data = new google.visualization.DataTable();
 
@@ -55,7 +55,7 @@
 
         // Format the data columns.
         var formatter = new google.visualization.NumberFormat({
-            pattern: '0.0000######%'
+            pattern: (show_series ? '0.0000######%' : '######')
         });
         for (var col = 1; col < data.getNumberOfColumns(); ++col) {
             formatter.format(data, col);
@@ -69,7 +69,7 @@
             tooltip: { isHtml: true },
             hAxis: { format: '####', gridlines: { count: -1 } },
             vAxis: {
-                format: '0.00########%',
+                format: (show_series ? '0.00########%' : '########'),
                 gridlines: { count: 6 },
                 minValue: 0,
                 baselineColor: 'black'
@@ -98,6 +98,8 @@
                 url: action,
                 data: queryForm.serialize(),
                 success: function(response_data) {
+                    var timeSeries = queryForm.find("input[value='time_series']");
+                    var show_series = timeSeries.is(":checked");
                     var words = [ ];
                     var all_series = [ ];
                     var year_start = response_data.year_start;
@@ -122,7 +124,7 @@
                             all_series[j].push(series[j]);
                         }
                     }
-                    drawAjaxChart(words, all_series);
+                    drawAjaxChart(words, all_series, show_series);
                 }
             });
             return false;

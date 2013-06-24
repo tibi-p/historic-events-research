@@ -67,30 +67,32 @@ def graph(request):
 					row_series = row_to_series(row)
 					row_series = row_series[(year_start - 1500):(year_end - 1500 + 1)]
 					relevances.append({
-						'word': word + '_' + model_type,
+						'word': '%s (%s)' % (word, model_type.replace('_', ' ')),
 						'series': row_series,
 					})
 
-		indexed_maxima = list(enumerate(local_maxima))
-		indexed_maxima = sorted([ (v, k) for k, v in indexed_maxima ], reverse=True)
-		shrink_factors = { }
-		for i, (locmax, index) in enumerate(indexed_maxima):
-			shrink_factors[index] = 1 - .05 * i
-		global_maximum = indexed_maxima[0][0]
+		if 'time_series' in model_set:
+			indexed_maxima = list(enumerate(local_maxima))
+			indexed_maxima = sorted([ (v, k) for k, v in indexed_maxima ], reverse=True)
+			shrink_factors = { }
+			for i, (locmax, index) in enumerate(indexed_maxima):
+				shrink_factors[index] = 1 - .05 * i
+			global_maximum = indexed_maxima[0][0]
 
-		for i, ngram in enumerate(ngrams):
-			locmax = local_maxima[i]
-			if locmax > 0.0 and locmax != global_maximum:
-				ratio = shrink_factors[i] * global_maximum / locmax
-				ngram['word'] += ' (*{0:.2e})'.format(ratio)
-				ngram['series'] = [ x * ratio for x in ngram['series'] ]
+			for i, ngram in enumerate(ngrams):
+				locmax = local_maxima[i]
+				if locmax > 0.0 and locmax != global_maximum:
+					ratio = shrink_factors[i] * global_maximum / locmax
+					ngram['word'] += ' (*{0:.2e})'.format(ratio)
+					ngram['series'] = [ x * ratio for x in ngram['series'] ]
 
-		for i, relevance in enumerate(relevances):
-			ratio = global_maximum / 10
-			relevance['word'] += ' (*{0:.2e})'.format(ratio)
-			relevance['series'] = [ x * ratio for x in relevance['series'] ]
-
-		ngrams.extend(relevances)
+			for i, relevance in enumerate(relevances):
+				ratio = global_maximum / 10
+				relevance['word'] += ' (*{0:.2e})'.format(ratio)
+				relevance['series'] = [ x * ratio for x in relevance['series'] ]
+			ngrams.extend(relevances)
+		else:
+			ngrams = relevances
 
 		result['year_start'] = year_start
 		result['year_end'] = year_end
