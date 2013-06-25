@@ -1,6 +1,8 @@
 #!/usr/bin/python
 from __future__ import print_function
 import csv
+import errno
+import gzip
 import os
 import sys
 import numpy as np
@@ -77,16 +79,60 @@ def process_topics(directory):
 	model_type = get_last_directory(directory).split('-')[0]
 	history_filename = os.path.join('data', 'zeitgeist', 'history', model_type + '_history.csv')
 	year_map = { }
+	history_rows = [ ]
 	with open(history_filename, 'r') as f:
-		for line in f:
-			row = line.split(',')
+		reader = csv.reader(f)
+		for row in reader:
 			index = int(row[0])
 			year = int(row[1])
 			year_map[index] = year
+			history_rows.append(row)
 
 	distributions_filename = os.path.join(directory, 'document-topic-distributions.csv')
 	topic_directory = get_topic_directory(directory)
 	summary_filename = os.path.join(topic_directory, 'summary.txt')
+
+	subcorpus_directory = os.path.join('data', 'subcorpus')
+	submodel_directory = os.path.join(subcorpus_directory, model_type)
+	try:
+		os.makedirs(submodel_directory)
+	except OSError as e:
+		if e.errno != errno.EEXIST:
+			raise
+
+	terms = [ ]
+	term_filename = os.path.join(topic_directory, 'term-index.txt')
+	print(term_filename)
+	with open(term_filename, 'r') as f:
+		for line in f:
+			terms.append(line.rstrip())
+
+	term_distro_filename = os.path.join(topic_directory, 'topic-term-distributions.csv.gz')
+	topics = [ ]
+	with gzip.open(term_distro_filename) as f:
+		reader = csv.reader(f)
+		for i, row in enumerate(reader):
+			topic = [ ]
+			for j, elem in enumerate(map(int, row)):
+				if elem != 0:
+					topic.append((j, elem))
+			topic_words = map(lambda x: terms[x[0]], topic)
+			topics.append(set(topic_words))
+
+	for i, topic in enumerate(topics):
+		subtopic_filename = os.path.join(submodel_directory, 'topic%03d_history.csv' % (i,))
+		if not os.path.isfile(subtopic_filename):
+			with open(subtopic_filename, 'w') as f:
+				writer = csv.writer(f)
+				for row in history_rows:
+					subtopic_row = row[:-1]
+					words = row[-1]
+					subtopic_words = [ ]
+					for word in words.split():
+						if word.lower() in topic:
+							subtopic_words.append(word)
+					subtopic_row.append(' '.join(subtopic_words))
+					writer.writerow(subtopic_row)
 
 	topic_words = extract_topic_words(summary_filename)
 	topic_years = extract_topic_years(year_map, distributions_filename)
@@ -112,6 +158,7 @@ def process_topics(directory):
 				print(file=f)
 
 def main(argv):
+	csv.field_size_limit(sys.maxsize)
 	lda_directory = os.path.join('data', 'lda')
 	directories = os.listdir(lda_directory)
 	for directory in directories:
