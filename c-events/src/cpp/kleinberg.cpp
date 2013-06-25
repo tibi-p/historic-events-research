@@ -49,7 +49,7 @@ bool batch_viterbi(const vector<unsigned int> &docs, const vector<unsigned int> 
 		return false;
 
 	vector<double> alphas;
-	alphas.push_back((double) total_relevant / total_docs / 1);
+	alphas.push_back((double) total_relevant / total_docs);
 	while (alphas.back() * s <= 1.0)
 		alphas.push_back(alphas.back() * s);
 	size_t num_states = alphas.size();

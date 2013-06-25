@@ -23,6 +23,7 @@ void append_csv(FILE *f, const char *word,
 	if (f == NULL)
 		return;
 
+	(void) word;
 #if 0
 	fprintf(f, "\"%s\"", word);
 	for (size_t i = 0; i < num_elems; i++)
@@ -124,10 +125,34 @@ void gaussian_model_series_to_csv(const char *word, const double *series, FILE *
 	}
 }
 
+unsigned int volume_time_feature(const struct time_entry *entry)
+{
+	uint32_t volume_count = entry->volume_count;
+	return volume_count;
+}
+
+unsigned int volume_total_counts_feature(const struct total_counts_entry *entry)
+{
+	uint32_t volume_count = entry->volume_count;
+	return volume_count;
+}
+
+unsigned int match_time_feature(const struct time_entry *entry)
+{
+	uint64_t match_count = entry->match_count;
+	return (unsigned int) (match_count / 1000);
+}
+
+unsigned int match_total_counts_feature(const struct total_counts_entry *entry)
+{
+	uint64_t match_count = entry->match_count;
+	return (unsigned int) (match_count / 1000);
+}
+
 int handle_entry(const struct dictionary_reader *dictreader, size_t index,
 	const gsl_multimin_fdfminimizer_type *T,
 	gsl_multimin_function_fdf regression_func,
-	double *smooth_series, const vector<unsigned int> &docs, vector<unsigned int> &relevant, FILE *relevance_files[],
+	double *smooth_series, vector<unsigned int> &relevant, FILE *relevance_files[],
 	vector<generic_processor *> processors)
 {
 	struct time_entry table[MAX_YEARS];
@@ -141,7 +166,7 @@ int handle_entry(const struct dictionary_reader *dictreader, size_t index,
 	if (err == 0) {
 		table_to_series(dictreader, table, table_size, series);
 		smoothify_series(series, smooth_series, MAX_YEARS, smoothing_window);
-		table_to_volume_counts(table, table_size, &relevant[0]);
+		table_to_feature_counts(table, table_size, &relevant[0], match_time_feature);
 
 		word = dictreader->words[index];
 		if (relevance_files[0] != NULL)
@@ -165,11 +190,13 @@ int string_compare(const void *a, const void *b)
 	return strcmp(*x, *y);
 }
 
-uint32_t compute_max_num_docs(const struct dictionary_reader *dictreader)
+unsigned int compute_max_num_docs(const struct dictionary_reader *dictreader)
 {
-	uint32_t max_num_docs = 0;
-	for (int i = 0; i < MAX_YEARS; i++)
-		max_num_docs = max(max_num_docs, dictreader->frequencies[i].volume_count);
+	unsigned int max_num_docs = 0;
+	for (int i = 0; i < MAX_YEARS; i++) {
+		const struct total_counts_entry *entry = &dictreader->frequencies[i];
+		max_num_docs = max(max_num_docs, match_total_counts_feature(entry));
+	}
 	return max_num_docs;
 }
 
@@ -251,8 +278,10 @@ int main()
 		}
 	}
 
-	for (int i = 0; i < MAX_YEARS; i++)
-		docs.push_back(dict.frequencies[i].volume_count);
+	for (int i = 0; i < MAX_YEARS; i++) {
+		const struct total_counts_entry *entry = &dict.frequencies[i];
+		docs.push_back(match_total_counts_feature(entry));
+	}
 
 	init_partial_sums();
 	init_ln_sums(compute_max_num_docs(&dict));
@@ -278,7 +307,7 @@ int main()
 			if (percent % 4 == 0)
 				printf("%u%% done\n", (unsigned int) percent);
 		}
-		err = handle_entry(&dict, i, T, regression_func, smooth_series, docs, relevant, relevance_files, processors);
+		err = handle_entry(&dict, i, T, regression_func, smooth_series, relevant, relevance_files, processors);
 		if (err != 0)
 			goto out_files;
 	}

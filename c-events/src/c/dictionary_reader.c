@@ -140,8 +140,8 @@ void table_to_series(const struct dictionary_reader *dictreader,
 	}
 }
 
-void table_to_volume_counts(const struct time_entry *table,
-	size_t table_size, unsigned int *counts)
+void table_to_feature_counts(const struct time_entry *table,
+	size_t table_size, unsigned int *counts, time_feature_f feature)
 {
 	const struct time_entry *entry;
 	size_t j;
@@ -156,7 +156,7 @@ void table_to_volume_counts(const struct time_entry *table,
 			exit(EXIT_FAILURE);
 		}
 		pos = entry->year - MIN_YEAR;
-		counts[pos] = entry->volume_count;
+		counts[pos] = feature(entry);
 	}
 }
 

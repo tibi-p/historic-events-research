@@ -25,6 +25,8 @@ struct indexed_word {
 	char *word;
 };
 
+typedef unsigned int (*time_feature_f)(const struct time_entry *);
+
 int init_dictreader(struct dictionary_reader *dict, const char *base_filename);
 
 void destroy_dictreader(struct dictionary_reader *dict);
@@ -36,8 +38,8 @@ void table_to_series(const struct dictionary_reader *dictreader,
 	const struct time_entry *table, size_t table_size,
 	double *series);
 
-void table_to_volume_counts(const struct time_entry *table,
-	size_t table_size, unsigned int *counts);
+void table_to_feature_counts(const struct time_entry *table,
+	size_t table_size, unsigned int *counts, time_feature_f feature);
 
 int is_in_word_bounds(const struct dictionary_reader *dict,
 	uint32_t word_offset, uint32_t word_length);
