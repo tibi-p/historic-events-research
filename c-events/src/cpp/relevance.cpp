@@ -125,18 +125,6 @@ void gaussian_model_series_to_csv(const char *word, const double *series, FILE *
 	}
 }
 
-unsigned int volume_total_counts_feature(const struct total_counts_entry *entry)
-{
-	uint32_t volume_count = entry->volume_count;
-	return volume_count;
-}
-
-unsigned int match_total_counts_feature(const struct total_counts_entry *entry)
-{
-	uint64_t match_count = entry->match_count;
-	return (unsigned int) (match_count / 1000);
-}
-
 int handle_entry(const struct dictionary_reader *dictreader, size_t index,
 	const gsl_multimin_fdfminimizer_type *T,
 	gsl_multimin_function_fdf regression_func,

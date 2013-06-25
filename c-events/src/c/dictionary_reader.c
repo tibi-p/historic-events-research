@@ -187,6 +187,18 @@ unsigned int match_time_feature(const struct time_entry *entry)
 	return (unsigned int) (match_count / 1000);
 }
 
+unsigned int volume_total_counts_feature(const struct total_counts_entry *entry)
+{
+	uint32_t volume_count = entry->volume_count;
+	return volume_count;
+}
+
+unsigned int match_total_counts_feature(const struct total_counts_entry *entry)
+{
+	uint64_t match_count = entry->match_count;
+	return (unsigned int) (match_count / 1000);
+}
+
 static int load_frequencies(struct total_counts_entry *frequencies,
 	const char *filename)
 {

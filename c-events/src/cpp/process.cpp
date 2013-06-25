@@ -79,11 +79,13 @@ void fit_gaussians(const char *word, const double *series, size_t inf, size_t su
 	}
 }
 
-uint32_t compute_max_num_docs(const struct dictionary_reader *dictreader)
+unsigned int compute_max_num_docs(const struct dictionary_reader *dictreader)
 {
-	uint32_t max_num_docs = 0;
-	for (int i = 0; i < MAX_YEARS; i++)
-		max_num_docs = max(max_num_docs, dictreader->frequencies[i].volume_count);
+	unsigned int max_num_docs = 0;
+	for (int i = 0; i < MAX_YEARS; i++) {
+		const struct total_counts_entry *entry = &dictreader->frequencies[i];
+		max_num_docs = max(max_num_docs, match_total_counts_feature(entry));
+	}
 	return max_num_docs;
 }
 
@@ -139,8 +141,10 @@ int main()
 	maybe_add_pointer<generic_processor>(processors, numerical_discrepancy_processor::create(smooth_series, "data/zeitgeist/summary/numerical_discrepancy_summary.txt"));
 	maybe_add_pointer<generic_processor>(processors, kleinberg_processor::create(docs, relevant, "data/zeitgeist/summary/kleinberg_summary.txt"));
 
-	for (int i = 0; i < MAX_YEARS; i++)
-		docs.push_back(dict.frequencies[i].volume_count);
+	for (int i = 0; i < MAX_YEARS; i++) {
+		const struct total_counts_entry *entry = &dict.frequencies[i];
+		docs.push_back(match_total_counts_feature(entry));
+	}
 
 	memset(zeitgeists, 0, sizeof(zeitgeists));
 	for (size_t i = 0; i < sizeof(zeitgeists) / sizeof(*zeitgeists); i++) {
@@ -173,7 +177,7 @@ int main()
 
 		table_to_series(&dict, table, num_read, series);
 		smoothify_series(series, smooth_series, MAX_YEARS, smoothing_window);
-		table_to_volume_counts(table, num_read, &relevant[0]);
+		table_to_feature_counts(table, num_read, &relevant[0], match_time_feature);
 
 		if (zeitgeists[0] != NULL)
 			process_series_double_change(word, smooth_series, zeitgeists[0]);

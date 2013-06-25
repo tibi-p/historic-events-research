@@ -50,6 +50,10 @@ unsigned int volume_time_feature(const struct time_entry *entry);
 
 unsigned int match_time_feature(const struct time_entry *entry);
 
+unsigned int volume_total_counts_feature(const struct total_counts_entry *entry);
+
+unsigned int match_total_counts_feature(const struct total_counts_entry *entry);
+
 #ifdef __cplusplus
 }
 #endif
