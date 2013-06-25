@@ -45,12 +45,12 @@ bool batch_viterbi(const vector<unsigned int> &docs, const vector<unsigned int> 
 	for (vector<unsigned int>::const_iterator it = relevant.begin(); it != relevant.end(); ++it)
 		total_relevant += *it;
 
-	if (total_relevant == total_docs)
+	if (total_relevant == 0 || total_relevant == total_docs)
 		return false;
 
 	vector<double> alphas;
 	alphas.push_back((double) total_relevant / total_docs);
-	while (alphas.back() * s <= 1.0)
+	while (alphas.back() * s <= 1.0 && alphas.size() <= 5)
 		alphas.push_back(alphas.back() * s);
 	size_t num_states = alphas.size();
 

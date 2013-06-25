@@ -46,6 +46,10 @@ int is_in_word_bounds(const struct dictionary_reader *dict,
 
 int iw_compare(const void *a, const void *b);
 
+unsigned int volume_time_feature(const struct time_entry *entry);
+
+unsigned int match_time_feature(const struct time_entry *entry);
+
 #ifdef __cplusplus
 }
 #endif
